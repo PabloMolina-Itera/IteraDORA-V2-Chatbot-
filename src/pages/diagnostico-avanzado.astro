@@ -1,0 +1,33 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+// Si forms.gle no se muestra en el iframe, obtén la URL embebida desde Google Forms > Enviar > Insertar HTML
+---
+
+<BaseLayout title="Diagnóstico Ejecutivo Avanzado - IteraDORA">
+  <section class="py-12 bg-[#F7FAFC] dark:bg-[#002633] min-h-[calc(100vh-80px)]">
+    <div class="max-w-4xl mx-auto px-6">
+      <div class="mb-8 text-center">
+        <h1 class="text-3xl md:text-4xl font-bold text-[#00334E] dark:text-white mb-2">
+          Diagnóstico Ejecutivo Avanzado
+        </h1>
+        <p class="text-gray-600 dark:text-gray-300">
+          Diagnóstico profundo para organizaciones con alto nivel de madurez.
+        </p>
+      </div>
+
+      <div class="flex justify-center">
+        <iframe
+          src="https://forms.gle/CJ8p4KRVYuMrzyrs6"
+          width="720"
+          height="1800"
+          frameborder="0"
+          marginheight="0"
+          marginwidth="0"
+          class="border-0 rounded-xl shadow-xl bg-white w-full max-w-[720px]"
+        >
+          Cargando…
+        </iframe>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
