@@ -5,38 +5,108 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 <BaseLayout title="IteraDORA - Diagnóstico DevOps basado en DORA">
 
   <!-- HERO -->
-<section 
+<section
   id="inicio"
-  class="relative min-h-[90vh] flex items-center bg-cover bg-center bg-no-repeat"
-  style="background-image: url('/fondo_hero.jpg');"
+  class="relative min-h-[90vh] flex items-center justify-center
+         overflow-hidden"
 >
 
-  <!-- Overlay -->
-  <div class="absolute inset-0 bg-gradient-to-b md:bg-gradient-to-r from-[#00334E]/95 via-[#00334E]/85 to-transparent"></div>
+  <!-- Imagen de fondo con efecto foto viva -->
+  <div class="absolute inset-0 living-photo-bg">
+    <div class="living-photo-inner absolute inset-0">
+      <img
+        src="/fondo_hero.jpg"
+        alt=""
+        class="w-[110%] h-[110%] max-w-none object-cover absolute inset-0"
+      />
+    </div>
+  </div>
 
-  <div class="relative z-10 w-full max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 py-16 sm:py-20">
+  <!-- Overlay oscuro sobre la imagen -->
+  <div class="absolute inset-0 bg-[#00334E]/80 dark:bg-[#001219]/85"></div>
 
-    <div class="max-w-2xl">
+  <!-- Orbes de luz -->
+  <div class="absolute inset-0 pointer-events-none">
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                w-[800px] h-[800px] rounded-full
+                bg-[#00A8D8]/5 blur-[150px]"></div>
+  </div>
 
-      <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold leading-tight tracking-tight text-white mb-6">
-        Descubre el nivel real de madurez DevOps de tu organización
-      </h1>
+  <!-- Contenido centrado -->
+  <div class="relative z-10 w-full max-w-4xl mx-auto
+              px-6 sm:px-8
+              py-20 md:py-28
+              text-center">
 
-      <p class="text-base sm:text-lg md:text-xl text-gray-200 mb-8 sm:mb-10 leading-relaxed">
-        Diagnóstico automatizado basado en la metodología DORA.
-        Toma decisiones estratégicas respaldadas por datos.
-      </p>
+    <!-- Badge -->
+    <div class="inline-flex items-center gap-2
+                bg-[#00A8D8]/10 border border-[#00A8D8]/20
+                px-4 py-1.5 rounded-full
+                text-[#00A8D8] text-sm font-semibold
+                tracking-wide uppercase
+                mb-6 reveal">
+      <span class="w-2 h-2 rounded-full bg-[#00A8D8] animate-pulse"></span>
+      Metodología DORA
+    </div>
 
+    <!-- Título -->
+    <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl
+               font-extrabold leading-[1.08] tracking-tight
+               text-white mb-6 reveal">
+      Descubre el nivel real de
+      <span class="text-[#00A8D8]">madurez DevOps</span>
+      de tu organización
+    </h1>
+
+    <!-- Descripción -->
+    <p class="text-base sm:text-lg md:text-xl text-gray-300
+              leading-relaxed mb-10
+              max-w-2xl mx-auto reveal">
+      Diagnóstico automatizado basado en la metodología DORA.
+      Toma decisiones estratégicas respaldadas por datos
+      y acelera la transformación de tu equipo.
+    </p>
+
+    <!-- CTA + secundario -->
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 reveal">
       <a href="#diagnostico"
-         class="inline-block w-full sm:w-auto text-center
+         class="inline-block text-center
                 bg-[#00A8D8] hover:bg-[#0095c2]
-                px-6 sm:px-8 py-4
-                rounded-xl text-base sm:text-lg font-semibold
-                shadow-xl transition duration-300 ease-in-out
-                transform hover:scale-105 active:scale-95">
+                text-white px-8 py-4 rounded-xl
+                text-base sm:text-lg font-semibold
+                shadow-lg shadow-[#00A8D8]/25
+                transition duration-300 ease-in-out
+                hover:shadow-xl hover:shadow-[#00A8D8]/30
+                hover:-translate-y-0.5 active:scale-95">
         Solicitar diagnóstico
       </a>
+      <a href="#beneficios"
+         class="text-gray-400 hover:text-white
+                text-sm sm:text-base font-medium
+                transition-colors flex items-center gap-1.5">
+        Ver beneficios
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M19 9l-7 7-7-7"/>
+        </svg>
+      </a>
+    </div>
 
+    <!-- Mini stats -->
+    <div class="flex flex-wrap items-center justify-center gap-6 sm:gap-10 reveal">
+      <div>
+        <div class="text-2xl sm:text-3xl font-bold text-white">10</div>
+        <div class="text-xs sm:text-sm text-gray-400">preguntas clave</div>
+      </div>
+      <div class="w-px h-8 bg-gray-600 hidden sm:block"></div>
+      <div>
+        <div class="text-2xl sm:text-3xl font-bold text-white">3</div>
+        <div class="text-xs sm:text-sm text-gray-400">niveles DORA</div>
+      </div>
+      <div class="w-px h-8 bg-gray-600 hidden sm:block"></div>
+      <div>
+        <div class="text-2xl sm:text-3xl font-bold text-[#00A8D8]">&lt;5 min</div>
+        <div class="text-xs sm:text-sm text-gray-400">diagnóstico</div>
+      </div>
     </div>
 
   </div>
@@ -56,7 +126,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
         <div class="relative rounded-[40px] overflow-hidden shadow-2xl group">
 
-          <img 
+          <img
             src="/beneficios_01.jpg"
             alt="Beneficios IteraDORA"
             class="w-full h-[520px] object-cover
@@ -65,10 +135,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           />
 
           <!-- Overlay premium -->
-          <div class="absolute inset-0 
-                      bg-gradient-to-tr 
-                      from-[#00334E]/40 
-                      via-transparent 
+          <div class="absolute inset-0
+                      bg-gradient-to-tr
+                      from-[#00334E]/40
+                      via-transparent
                       to-[#00A8D8]/20">
           </div>
 
@@ -89,27 +159,27 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   </span>
 </h2>
 
-        <p class="text-lg text-gray-600 dark:text-gray-300 
+        <p class="text-lg text-gray-600 dark:text-gray-300
                   leading-relaxed mb-8">
-          IteraDORA no es solo una evaluación técnica. Es una herramienta estratégica 
-          que acelera procesos, posiciona la consultoría y genera valor real en clientes 
+          IteraDORA no es solo una evaluacion tecnica. Es una herramienta estrategica
+          que acelera procesos, posiciona la consultoria y genera valor real en clientes
           y equipos ejecutivos.
         </p>
 
         <ul class="space-y-6">
 
           <li class="flex items-start gap-4">
-            <div class="w-8 h-8 rounded-full bg-[#00A8D8]/20 
+            <div class="w-8 h-8 rounded-full bg-[#00A8D8]/20
                         flex items-center justify-center text-[#00A8D8] font-bold">
               1
             </div>
             <p class="text-gray-700 dark:text-gray-300">
-              Acelera el diagnóstico en prácticas DevOps con claridad inmediata.
+              Acelera el diagnostico en practicas DevOps con claridad inmediata.
             </p>
           </li>
 
           <li class="flex items-start gap-4">
-            <div class="w-8 h-8 rounded-full bg-[#00A8D8]/20 
+            <div class="w-8 h-8 rounded-full bg-[#00A8D8]/20
                         flex items-center justify-center text-[#00A8D8] font-bold">
               2
             </div>
@@ -119,27 +189,27 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           </li>
 
           <li class="flex items-start gap-4">
-            <div class="w-8 h-8 rounded-full bg-[#00A8D8]/20 
+            <div class="w-8 h-8 rounded-full bg-[#00A8D8]/20
                         flex items-center justify-center text-[#00A8D8] font-bold">
               3
             </div>
             <p class="text-gray-700 dark:text-gray-300">
-              Genera valor técnico y gerencial para una toma de decisiones estratégica.
+              Genera valor tecnico y gerencial para una toma de decisiones estrategica.
             </p>
           </li>
 
           <li class="flex items-start gap-4">
-            <div class="w-8 h-8 rounded-full bg-[#00A8D8]/20 
+            <div class="w-8 h-8 rounded-full bg-[#00A8D8]/20
                         flex items-center justify-center text-[#00A8D8] font-bold">
               4
             </div>
             <p class="text-gray-700 dark:text-gray-300">
-              Impulsa nuevas oportunidades comerciales en migraciones y consultoría.
+              Impulsa nuevas oportunidades comerciales en migraciones y consultoria.
             </p>
           </li>
 
           <li class="flex items-start gap-4">
-            <div class="w-8 h-8 rounded-full bg-[#00A8D8]/20 
+            <div class="w-8 h-8 rounded-full bg-[#00A8D8]/20
                         flex items-center justify-center text-[#00A8D8] font-bold">
               5
             </div>
@@ -157,91 +227,163 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   </div>
 
 </section>
-  <!-- CÓMO FUNCIONA -->  
+
+  <!-- COMO FUNCIONA -->
   <section id="como-funciona"
            class="py-28 bg-[#e5e7e8] dark:bg-[#002633] transition-colors duration-500">
 
-    <div class="max-w-6xl mx-auto px-6 text-center">
+    <div class="max-w-6xl mx-auto px-6">
 
-      <h2 class="text-4xl md:text-5xl font-extrabold 
-                 text-[#00334E] dark:text-white mb-16 reveal">
-        ¿Cómo funciona?
-      </h2>
+      <!-- Encabezado -->
+      <div class="text-center mb-16 reveal">
+        <h2 class="text-4xl md:text-5xl font-extrabold
+                   text-[#00334E] dark:text-white mb-4">
+          ¿Cómo funciona?
+        </h2>
+        <p class="text-lg text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
+          Tres pasos para obtener un diagnóstico claro y accionable.
+        </p>
+      </div>
 
-      <div class="grid md:grid-cols-3 gap-10">
+      <!-- Cards -->
+      <div class="grid md:grid-cols-3 gap-8 lg:gap-12">
 
-        <!-- CARD 1 -->
-        <div class="reveal group flex flex-col justify-between
+        <!-- CARD 1: Evaluación -->
+        <div class="reveal group relative
                     bg-white dark:bg-[#0A3E52]
-                    p-10 rounded-2xl shadow-md
+                    p-8 lg:p-10 rounded-2xl shadow-md
+                    border border-gray-100 dark:border-gray-700/30
                     transition-all duration-500
-                    hover:-translate-y-4 hover:shadow-2xl
-                    hover:ring-2 hover:ring-[#00A8D8]/50
-                    hover:bg-sky-600/50">
+                    hover:-translate-y-3 hover:shadow-xl
+                    hover:border-[#00A8D8]/30">
 
-          <div>
-            <div class="text-5xl mb-6 transition-transform duration-500 group-hover:scale-125">
-              1️⃣
-            </div>
-
-            <h3 class="text-2xl font-bold mb-4">
-              Evaluación
-            </h3>
-
-            <p class="text-gray-600 dark:text-gray-300 leading-relaxed mb-8">
-              Responde una encuesta guiada basada en la metodología DORA.
-            </p>
+          <!-- Número -->
+          <div class="w-12 h-12 rounded-xl bg-[#00A8D8]/10
+                      flex items-center justify-center
+                      text-[#00A8D8] font-extrabold text-lg
+                      transition-all duration-500
+                      group-hover:bg-[#00A8D8] group-hover:text-white mb-5">
+            1
           </div>
 
+          <!-- Ícono -->
+          <div class="mb-4">
+            <svg class="w-10 h-10 text-[#00A8D8] transition-transform duration-500 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+            </svg>
+          </div>
+
+          <h3 class="text-xl lg:text-2xl font-bold mb-3
+                     text-[#00334E] dark:text-white">
+            Evaluación
+          </h3>
+
+          <p class="text-gray-500 dark:text-gray-400 leading-relaxed">
+            Responde 10 preguntas clave basadas en la metodología DORA. Sin configuraciones, sin fricción.
+          </p>
+
+          <div class="mt-5 inline-flex items-center gap-1.5
+                      text-xs font-medium text-[#00A8D8]">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#00A8D8]"></span>
+            ~3 minutos
+          </div>
         </div>
 
-        <!-- CARD 2 -->
-        <div class="reveal group flex flex-col justify-between
+        <!-- CARD 2: Análisis -->
+        <div class="reveal group relative
                     bg-white dark:bg-[#0A3E52]
-                    p-10 rounded-2xl shadow-md
+                    p-8 lg:p-10 rounded-2xl shadow-md
+                    border border-gray-100 dark:border-gray-700/30
                     transition-all duration-500
-                    hover:-translate-y-4 hover:shadow-2xl
-                    hover:ring-2 hover:ring-[#00A8D8]/50
-                    hover:bg-sky-600/50">
+                    hover:-translate-y-3 hover:shadow-xl
+                    hover:border-[#00A8D8]/30">
 
-          <div>
-            <div class="text-5xl mb-6 transition-transform duration-500 group-hover:scale-125">
-              2️⃣
-            </div>
-
-            <h3 class="text-2xl font-bold mb-4">
-              Análisis
-            </h3>
-
-            <p class="text-gray-600 dark:text-gray-300 leading-relaxed mb-8">
-              Procesamos métricas y calculamos tu nivel real de madurez.
-            </p>
+          <!-- Flecha conectora (desktop) -->
+          <div class="hidden md:block absolute -left-8 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path d="M9 5l7 7-7 7"/>
+            </svg>
           </div>
 
+          <!-- Número -->
+          <div class="w-12 h-12 rounded-xl bg-[#00A8D8]/10
+                      flex items-center justify-center
+                      text-[#00A8D8] font-extrabold text-lg
+                      transition-all duration-500
+                      group-hover:bg-[#00A8D8] group-hover:text-white mb-5">
+            2
+          </div>
+
+          <!-- Ícono -->
+          <div class="mb-4">
+            <svg class="w-10 h-10 text-[#00A8D8] transition-transform duration-500 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
+              <path d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/>
+            </svg>
+          </div>
+
+          <h3 class="text-xl lg:text-2xl font-bold mb-3
+                     text-[#00334E] dark:text-white">
+            Análisis
+          </h3>
+
+          <p class="text-gray-500 dark:text-gray-400 leading-relaxed">
+            Procesamos tus métricas con el modelo DORA y calculamos tu nivel real de madurez DevOps.
+          </p>
+
+          <div class="mt-5 inline-flex items-center gap-1.5
+                      text-xs font-medium text-[#00A8D8]">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#00A8D8]"></span>
+            Automatizado
+          </div>
         </div>
 
-        <!-- CARD 3 -->
-        <div class="reveal group flex flex-col justify-between
+        <!-- CARD 3: Recomendaciones -->
+        <div class="reveal group relative
                     bg-white dark:bg-[#0A3E52]
-                    p-10 rounded-2xl shadow-md
+                    p-8 lg:p-10 rounded-2xl shadow-md
+                    border border-gray-100 dark:border-gray-700/30
                     transition-all duration-500
-                    hover:-translate-y-4 hover:shadow-2xl
-                    hover:ring-2 hover:ring-[#00A8D8]/50 hover:bg-sky-600/50">
+                    hover:-translate-y-3 hover:shadow-xl
+                    hover:border-[#00A8D8]/30">
 
-          <div>
-            <div class="text-5xl mb-6 transition-transform duration-500 group-hover:scale-125">
-              3️⃣
-            </div>
-
-            <h3 class="text-2xl font-bold mb-4">
-              Recomendaciones
-            </h3>
-
-            <p class="text-gray-600 dark:text-gray-300 leading-relaxed mb-8">
-              Recibe un diagnóstico con próximos pasos accionables.
-            </p>
+          <!-- Flecha conectora (desktop) -->
+          <div class="hidden md:block absolute -left-8 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path d="M9 5l7 7-7 7"/>
+            </svg>
           </div>
 
+          <!-- Número -->
+          <div class="w-12 h-12 rounded-xl bg-[#00A8D8]/10
+                      flex items-center justify-center
+                      text-[#00A8D8] font-extrabold text-lg
+                      transition-all duration-500
+                      group-hover:bg-[#00A8D8] group-hover:text-white mb-5">
+            3
+          </div>
+
+          <!-- Ícono -->
+          <div class="mb-4">
+            <svg class="w-10 h-10 text-[#00A8D8] transition-transform duration-500 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+          </div>
+
+          <h3 class="text-xl lg:text-2xl font-bold mb-3
+                     text-[#00334E] dark:text-white">
+            Recomendaciones
+          </h3>
+
+          <p class="text-gray-500 dark:text-gray-400 leading-relaxed">
+            Recibe un diagnóstico claro con los próximos pasos accionables para tu equipo.
+          </p>
+
+          <div class="mt-5 inline-flex items-center gap-1.5
+                      text-xs font-medium text-[#00A8D8]">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#00A8D8]"></span>
+            Resultado instantáneo
+          </div>
         </div>
 
       </div>
@@ -251,120 +393,74 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   </section>
 
 
-  <!-- NIVELES DE DIAGNÓSTICO -->
+  <!-- DIAGNOSTICO -->
+  <!-- DIAGNOSTICO -->
   <section id="diagnostico"
            class="py-28 bg-[#F7FAFC] dark:bg-[#002633] transition-colors duration-500">
 
     <div class="max-w-6xl mx-auto px-6 text-center">
 
-      <h2 class="text-4xl md:text-5xl font-extrabold 
+      <h2 class="text-4xl md:text-5xl font-extrabold
                  text-[#00334E] dark:text-white mb-16 reveal">
-        Elige tu nivel de diagnóstico
+        Diagnóstico DevOps
       </h2>
 
-      <div class="grid md:grid-cols-3 gap-10 items-stretch">
-
-<!-- FUNDACIONAL -->
-<div class="reveal group flex flex-col justify-between
-            bg-white dark:bg-[#0A3E52]
-            p-10 rounded-2xl shadow-md
-            transition-all duration-500
-            hover:-translate-y-4 hover:shadow-2xl
-            hover:ring-2 hover:ring-[#00A8D8]/50">
-
-  <div>
-    <div class="text-5xl mb-6 transition-transform duration-500 group-hover:scale-125">
-      🌱
-    </div>
-
-    <h3 class="text-2xl font-bold mb-4">
-      Fundacional
-    </h3>
-
-    <p class="text-gray-600 dark:text-gray-300 leading-relaxed mb-8">
-      Ideal para organizaciones que están comenzando su adopción DevOps.
-    </p>
-  </div>
-
-  <!-- BOTÓN -->
-  <a href="/diagnostico-fundacional"
-     class="glow-btn mt-auto inline-block bg-[#00A8D8] hover:bg-[#0095c2]
-            text-white px-8 py-3 rounded-xl
-            font-semibold shadow-lg
-            transition transform hover:scale-110">
-    Iniciar diagnóstico
-  </a>
-
-</div>
-
-
-<!-- INTERMEDIO -->
-<div class="reveal group flex flex-col justify-between
-            bg-white dark:bg-[#0A3E52]
-            p-10 rounded-2xl shadow-md
-            transition-all duration-500
-            hover:-translate-y-4 hover:shadow-2xl
-            hover:ring-2 hover:ring-[#00A8D8]/50">
-
-  <div>
-    <div class="text-5xl mb-6 transition-transform duration-500 group-hover:scale-125">
-      ⚙️
-    </div>
-
-    <h3 class="text-2xl font-bold mb-4">
-      Intermedio
-    </h3>
-
-    <p class="text-gray-600 dark:text-gray-300 leading-relaxed mb-8">
-      Para equipos con prácticas DevOps activas que buscan optimización y mejora continua.
-    </p>
-  </div>
-
-  <!-- BOTÓN -->
-  <a href="/diagnostico-intermedio"
-     class="glow-btn mt-auto inline-block bg-[#00A8D8] hover:bg-[#0095c2]
-            text-white px-8 py-3 rounded-xl
-            font-semibold shadow-lg
-            transition transform hover:scale-110">
-    Evaluar nivel
-  </a>
-
-</div>
-
-
-
-        <!-- AVANZADO -->
-        <div class="reveal group flex flex-col justify-between
-                    bg-white dark:bg-[#0A3E52]
-                    p-10 rounded-2xl shadow-md
+      <div class="max-w-lg mx-auto">
+        <div class="reveal group relative flex flex-col items-center
+                    p-12 rounded-2xl shadow-md
                     transition-all duration-500
                     hover:-translate-y-4 hover:shadow-2xl
-                    hover:ring-2 hover:ring-[#00A8D8]/50">
+                    hover:ring-2 hover:ring-[#00A8D8]/50
+                    overflow-hidden"
+             style="background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 40%, #e0f2fe 100%);">
 
-          <div>
-            <div class="text-5xl mb-6 transition-transform duration-500 group-hover:scale-125">
-              🚀
-            </div>
+          <!-- Orbe decorativo dentro de la tarjeta -->
+          <div class="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-[#00A8D8]/8 blur-2xl pointer-events-none group-hover:bg-[#00A8D8]/12 transition-colors duration-500"></div>
+          <div class="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-[#00607B]/6 blur-2xl pointer-events-none"></div>
 
-            <h3 class="text-2xl font-bold mb-4">
-              Avanzado
-            </h3>
+          <!-- Versión dark -->
+          <div class="absolute inset-0 bg-gradient-to-br from-[#0A3E52] via-[#0A3550] to-[#06283a] dark:opacity-100 opacity-0 pointer-events-none"></div>
+          <div class="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-[#00A8D8]/15 blur-2xl pointer-events-none dark:opacity-100 opacity-0"></div>
+          <div class="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-[#00607B]/10 blur-2xl pointer-events-none dark:opacity-100 opacity-0"></div>
 
-            <p class="text-gray-600 dark:text-gray-300 leading-relaxed mb-8">
-              Diagnóstico profundo para organizaciones con alto nivel de madurez.
-            </p>
+          <!-- Ícono SVG en vez de emoji -->
+          <div class="relative z-10 w-20 h-20 rounded-2xl bg-gradient-to-br from-[#00A8D8]/15 to-[#00607B]/10
+                      flex items-center justify-center mb-6
+                      transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+            <svg class="w-10 h-10 text-[#00A8D8]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 3v18h18"/>
+              <path d="M7 16l4-8 4 4 4-6"/>
+              <circle cx="19" cy="5" r="2" fill="currentColor" stroke="none"/>
+            </svg>
           </div>
 
-          <a href="/diagnostico-avanzado"
-             class="glow-btn mt-auto inline-block bg-[#00A8D8] hover:bg-[#0095c2]
-                    text-white px-8 py-3 rounded-xl
-                    font-semibold shadow-lg
-                    transition transform hover:scale-110">
-            Diagnóstico ejecutivo
+          <h3 class="relative z-10 text-2xl font-bold mb-4 text-[#00334E] dark:text-white">
+            Diagnóstico Integral
+          </h3>
+
+          <p class="relative z-10 text-gray-600 dark:text-gray-300 leading-relaxed mb-8 text-center">
+            Evaluá la madurez DevOps de tu organización con 10 preguntas clave basadas en la metodología DORA.
+            Al finalizar recibirás una clasificación: Fundacional, Intermedio o Avanzado.
+          </p>
+
+          <a href="/diagnostico"
+             class="group/btn relative z-10 inline-flex items-center gap-3
+                    bg-[#00A8D8] hover:bg-[#0088b0]
+                    text-white px-8 py-4 rounded-2xl
+                    font-bold text-base
+                    shadow-lg shadow-[#00A8D8]/25
+                    transition-all duration-300
+                    hover:shadow-xl hover:shadow-[#00A8D8]/40
+                    hover:-translate-y-1 active:scale-95
+                    overflow-hidden">
+            <span class="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700"></span>
+            <span class="relative z-10">Iniciar diagnóstico</span>
+            <svg class="relative z-10 w-5 h-5 transition-transform duration-300 group-hover/btn:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+            </svg>
           </a>
 
         </div>
-
       </div>
 
     </div>
@@ -372,62 +468,147 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   </section>
 
 
- <footer class="bg-white dark:bg-[#001C26] 
-               border-t border-gray-200 dark:border-gray-800 
+ <footer class="bg-[#0A1929] dark:bg-[#000e17]
+               border-t border-gray-800
                transition-colors duration-500">
 
-  <div class="max-w-6xl mx-auto px-6 py-14">
+  <div class="max-w-7xl mx-auto px-6 pt-16 pb-10">
 
-    <div class="flex flex-col md:flex-row 
-                justify-between items-center gap-8">
+    <!-- Grid principal -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
 
-      <!-- LOGO -->
-      <div class="flex flex-col items-center md:items-start">
-
-        <img 
-          src="/logo-iteradora.png"
-          alt="IteraDORA"
-          class="h-10 object-contain dark:brightness-0 dark:invert"
-        />
-
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-3 text-center md:text-left">
-          Diagnóstico DevOps basado en la metodología DORA.
+      <!-- COL 1: Logo + descripción -->
+      <div class="lg:col-span-1">
+        <div class="flex items-center gap-3 mb-4">
+          <img
+            src="/logo-iteradora.png"
+            alt="IteraDORA"
+            class="h-9 object-contain brightness-0 invert"
+          />
+          <span class="text-gray-500 text-xs">by</span>
+          <span class="text-white font-bold text-sm tracking-wide">ITERA PROCESS</span>
+        </div>
+        <p class="text-sm text-gray-400 leading-relaxed mb-5">
+          Diagnóstico DevOps basado en la metodología DORA. Impulsado por Itera Process, especialistas en Cloud, Workflow Automation, AI y Data.
         </p>
-
+        <!-- Redes sociales -->
+        <div class="flex items-center gap-3">
+          <a href="https://linkedin.com/company/itera-process" target="_blank" rel="noopener" title="LinkedIn" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-[#00A8D8]/20 flex items-center justify-center transition-colors">
+            <svg class="w-4 h-4 text-gray-400 hover:text-[#00A8D8]" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+          </a>
+          <a href="https://x.com/itera_process" target="_blank" rel="noopener" title="X" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-[#00A8D8]/20 flex items-center justify-center transition-colors">
+            <svg class="w-4 h-4 text-gray-400 hover:text-[#00A8D8]" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          </a>
+          <a href="https://facebook.com/IteraProcess.latam" target="_blank" rel="noopener" title="Facebook" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-[#00A8D8]/20 flex items-center justify-center transition-colors">
+            <svg class="w-4 h-4 text-gray-400 hover:text-[#00A8D8]" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          </a>
+          <a href="https://youtube.com/channel/UCI1pId21btcbTVK8NYVUZYg" target="_blank" rel="noopener" title="YouTube" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-[#00A8D8]/20 flex items-center justify-center transition-colors">
+            <svg class="w-4 h-4 text-gray-400 hover:text-[#00A8D8]" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+          </a>
+          <a href="https://instagram.com/itera.process" target="_blank" rel="noopener" title="Instagram" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-[#00A8D8]/20 flex items-center justify-center transition-colors">
+            <svg class="w-4 h-4 text-gray-400 hover:text-[#00A8D8]" fill="currentColor" viewBox="0 0 24 24"><path d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.06 1.802h-.51c-2.367 0-2.67.011-3.648.052-.88.04-1.358.187-1.676.31a2.81 2.81 0 00-1.042.675 2.81 2.81 0 00-.675 1.042c-.123.318-.27.796-.31 1.676-.04.98-.052 1.282-.052 3.648v.51c0 2.367.011 2.67.052 3.648.04.88.187 1.358.31 1.676.173.394.362.672.675 1.042.313.313.648.502 1.042.675.318.123.796.27 1.676.31.98.04 1.282.052 3.648.052h.51c2.367 0 2.67-.011 3.648-.052.88-.04 1.358-.187 1.676-.31a2.81 2.81 0 001.042-.675 2.81 2.81 0 00.675-1.042c.123-.318.27-.796.31-1.676.04-.98.052-1.282.052-3.648v-.51c0-2.367-.011-2.67-.052-3.648-.04-.88-.187-1.358-.31-1.676a2.81 2.81 0 00-.675-1.042 2.81 2.81 0 00-1.042-.675c-.318-.123-.796-.27-1.676-.31-.98-.04-1.282-.052-3.648-.052zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-2.072a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z"/></svg>
+          </a>
+        </div>
       </div>
 
-      <!-- LINKS -->
-      <div class="flex gap-8 text-sm font-medium
-                  text-gray-600 dark:text-gray-400">
+      <!-- COL 2: Navegación -->
+      <div>
+        <h4 class="text-white font-semibold text-sm uppercase tracking-wider mb-4">IteraDORA</h4>
+        <ul class="space-y-2.5">
+          <li><a href="#inicio" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">Inicio</a></li>
+          <li><a href="#beneficios" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">Beneficios</a></li>
+          <li><a href="#diagnostico" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">Diagnóstico</a></li>
+          <li><a href="/diagnostico" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">Iniciar diagnóstico</a></li>
+        </ul>
+      </div>
 
-        <a href="#inicio"
-           class="hover:text-[#00A8D8] transition">
-          Inicio
-        </a>
+      <!-- COL 3: Itera Process -->
+      <div>
+        <h4 class="text-white font-semibold text-sm uppercase tracking-wider mb-4">Itera Process</h4>
+        <ul class="space-y-2.5">
+          <li><a href="https://iteraprocess.com/" target="_blank" rel="noopener" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">Sitio web</a></li>
+          <li><a href="https://iteraprocess.com/" target="_blank" rel="noopener" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">Servicios</a></li>
+          <li><a href="https://linkedin.com/company/itera-process" target="_blank" rel="noopener" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">LinkedIn</a></li>
+          <li><a href="mailto:info.mx.df@iteraprocess.com" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">Contacto</a></li>
+        </ul>
+      </div>
 
-        <a href="#beneficios"
-           class="hover:text-[#00A8D8] transition">
-          Beneficios
-        </a>
+      <!-- COL 4: Contacto + Partners -->
+      <div>
+        <h4 class="text-white font-semibold text-sm uppercase tracking-wider mb-4">Contacto</h4>
+        <ul class="space-y-2.5 mb-5">
+          <li class="flex items-start gap-2">
+            <svg class="w-4 h-4 text-gray-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            <a href="mailto:info.mx.df@iteraprocess.com" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors break-all">info.mx.df@iteraprocess.com</a>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-4 h-4 text-gray-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span class="text-sm text-gray-400">México · Colombia · Perú · España</span>
+          </li>
+        </ul>
 
-        <a href="#diagnostico"
-           class="hover:text-[#00A8D8] transition">
-          Diagnóstico
-        </a>
-
+        <!-- Partners -->
+        <h4 class="text-white font-semibold text-sm uppercase tracking-wider mb-3">Partners</h4>
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-gray-500 font-medium bg-white/5 px-2.5 py-1 rounded">AWS</span>
+          <span class="text-xs text-gray-500 font-medium bg-white/5 px-2.5 py-1 rounded">Atlassian</span>
+          <span class="text-xs text-gray-500 font-medium bg-white/5 px-2.5 py-1 rounded">IBM</span>
+        </div>
       </div>
 
     </div>
 
-    <!-- footer -->
-    <div class="mt-12 pt-6 border-t border-gray-200 dark:border-gray-800 text-center">
-
-      <p class="text-sm text-gray-500 dark:text-gray-500">
-        © {new Date().getFullYear()} IteraDORA. Todos los derechos reservados.
+    <!-- Línea final -->
+    <div class="pt-8 border-t border-gray-800 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <p class="text-xs text-gray-500">
+        &copy; {new Date().getFullYear()} IteraDORA — Impulsado por Itera Process. Todos los derechos reservados.
       </p>
-
+      <div class="flex gap-6 text-xs text-gray-500">
+        <a href="https://iteraprocess.com/" target="_blank" rel="noopener" class="hover:text-gray-300 transition-colors">Aviso de privacidad</a>
+        <a href="https://iteraprocess.com/" target="_blank" rel="noopener" class="hover:text-gray-300 transition-colors">Términos</a>
+      </div>
     </div>
 
   </div>
 
 </footer>
+</BaseLayout>
+
+<style is:global>
+  /* ─── Foto viva: la imagen respira sola ─── */
+  @keyframes living-photo {
+    0%   { transform: translate(0%, 0%) scale(1); }
+    25%  { transform: translate(-2%, -1.5%) scale(1.04); }
+    50%  { transform: translate(1%, -2.5%) scale(1.02); }
+    75%  { transform: translate(-1%, -0.5%) scale(1.05); }
+    100% { transform: translate(0%, 0%) scale(1); }
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% { opacity: 0.5; }
+    50%      { opacity: 0.8; }
+  }
+
+  .living-photo-bg {
+    /* la imagen respira debajo del texto */
+  }
+
+  .living-photo-inner {
+    animation: living-photo 12s ease-in-out infinite;
+  }
+
+  .animate-glow-pulse {
+    animation: glow-pulse 4s ease-in-out infinite;
+  }
+
+  /* ─── Card flotante ─── */
+  @keyframes hero-float-card {
+    0%, 100% { transform: translateY(0); }
+    40%      { transform: translateY(-8px); }
+  }
+
+  .hero-float-card {
+    animation: hero-float-card 5s ease-in-out infinite;
+    animation-delay: 1.5s;
+  }
+</style>

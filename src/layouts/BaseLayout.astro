@@ -18,7 +18,7 @@ const { title } = Astro.props;
            transition-colors duration-300"
   >
 
-    <!-- Script Tema + Modal -->
+    <!-- Script Tema: evita el flash aplicando la clase antes de pintar -->
     <script is:inline>
       (function () {
         const saved = localStorage.getItem("theme");
@@ -26,26 +26,6 @@ const { title } = Astro.props;
         const isDark = saved === "dark" || (!saved && prefersDark);
         document.documentElement.classList.toggle("dark", isDark);
       })();
-
-      window.addEventListener("load", () => {
-        const themeToggle = document.getElementById("themeToggle");
-        if (!themeToggle) return;
-
-        function updateIcon() {
-          const isDark = document.documentElement.classList.contains("dark");
-          themeToggle.textContent = isDark ? "☀️" : "🌙";
-        }
-
-        updateIcon();
-
-        themeToggle.addEventListener("click", () => {
-          const isDark = !document.documentElement.classList.contains("dark");
-          document.documentElement.classList.toggle("dark", isDark);
-          localStorage.setItem("theme", isDark ? "dark" : "light");
-          updateIcon();
-        });
-      });
-
     </script>
 
     <Navbar />

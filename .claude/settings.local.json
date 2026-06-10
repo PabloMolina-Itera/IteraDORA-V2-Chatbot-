@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pkill -f \"astro dev\")",
+      "Bash(npm run *)",
+      "Bash(curl -s -X POST http://localhost:4321/api/chat -H \"Content-Type: application/json\" -d '{\"messages\":[{\"role\":\"user\",\"content\":\"Hola\"}],\"nivel\":\"fundacional\"}')",
+      "Bash(cmd //c \"for /f \\\\\"tokens=5\\\\\" %a in \\('netstat -ano ^| findstr \\\\\":432[0-9]\\\\\" ^| findstr \\\\\"LISTENING\\\\\"'\\) do taskkill /F /PID %a\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //PID 2184 //PID 6816 //PID 13212 //PID 14876 //PID 15620 //PID 6596 //PID 11404 //PID 5464)",
+      "Bash(curl -s http://localhost:4321/api/debug)",
+      "Bash(curl -s -D - -X POST http://localhost:4321/api/chat -H \"Content-Type: application/json\" -d '{\"messages\":[{\"role\":\"user\",\"content\":\"Hola\"}],\"nivel\":\"fundacional\"}')",
+      "Bash(curl -v -X POST http://localhost:4321/api/chat -H 'Content-Type: application/json' -H 'Content-Length: 69' -d '{\"messages\":[{\"role\":\"user\",\"content\":\"Hola\"}],\"nivel\":\"fundacional\"}')",
+      "Bash(curl -s -X POST http://localhost:4321/api/debug -H \"Content-Type: application/json\" -d '{\"test\":\"hola\",\"messages\":[{\"role\":\"user\",\"content\":\"Hola\"}],\"nivel\":\"fundacional\"}')",
+      "Bash(curl -s -X POST http://localhost:4321/api/debug -H \"Content-Type: application/json\" -d '{\"test\":\"hola\",\"nivel\":\"fundacional\"}')",
+      "Bash(curl -v -X POST http://localhost:4321/api/debug --data-raw '{\"test\":\"hola\",\"nivel\":\"fundacional\"}' -H 'Content-Type: application/json')",
+      "Bash(curl -4 -v -X POST http://localhost:4321/api/debug --data-raw '{\"test\":\"hola\",\"nivel\":\"fundacional\"}' -H 'Content-Type: application/json')",
+      "Bash(curl -4 -s -X POST http://127.0.0.1:4321/api/debug -H \"Content-Type: application/json\" -d '{\"test\":\"hola\"}')",
+      "Bash(curl -s -X POST \"http://[::1]:4321/api/debug\" -H \"Content-Type: application/json\" -d '{\"test\":\"hola\"}')",
+      "WebSearch",
+      "Bash(npm install *)"
+    ]
+  }
+}
