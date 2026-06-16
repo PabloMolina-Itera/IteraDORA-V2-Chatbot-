@@ -14,7 +14,8 @@ async function ollamaChat(messages: { role: string; content: string }[]): Promis
       messages,
       stream: false,
       options: {
-        num_predict: 256,
+        num_predict: 300,
+        temperature: 0.1,
       },
     }),
   });
@@ -29,70 +30,69 @@ async function ollamaChat(messages: { role: string; content: string }[]): Promis
 }
 
 const PREGUNTAS = [
-  "¿El código fuente de la aplicación está bajo control de versiones (SCM), como ejemplo Github, Gitlab, etc.?",
-  "¿Existe una canalización básica (pipeline) para compilar el artefacto de la aplicación y almacenarlo en un sistema de gestión de artefactos?",
-  "¿El cumplimiento de los estándares de código se realiza mediante revisiones de código?",
-  "¿Las pruebas unitarias son escritas para la interfaz pública de todas las clases/módulos?",
-  "¿El código fuente de la aplicación, los entornos de ejecución y las canalizaciones de despliegue se analizan en busca de vulnerabilidades?",
-  "¿El pipeline verifica el artefacto de la aplicación (pruebas, linting, análisis estático)?",
-  "¿Se utilizan herramientas de análisis estático de código para identificar deuda técnica?",
+  "¿Las definiciones del pipeline están bajo control de código fuente (SCM) tales como GitHub, GitLab, etc.?",
   "¿La Infraestructura como código (IaC) se usa como un estándar?",
-  "¿El pipeline despliega automáticamente el artefacto en el entorno más bajo (Ej: Entorno Test o Entorno Dev)?",
-  "¿El código se integra en la rama principal de desarrollo varias veces al día?",
+  "El código se integra en la rama principal de desarrollo al menos una vez al día.",
+  "¿Las builds o despliegues fallidos son atendidos inmediatamente por el equipo (squad) como la máxima prioridad a corregir?",
+  "¿Las builds del pipeline fallan si los estándares aplicados programáticamente (como cobertura de pruebas o linters) alcanzan los umbrales de fallo acordados?",
+  "¿El pipeline despliega automáticamente el artefacto en el entorno más bajo (si aplica) (Ej: Entorno Test o Entorno Dev)?",
+  "Uso de feature toggles (banderas de funcionalidad) para permitir un desarrollo rápido y la integración del equipo.",
+  "¿Las funcionalidades incompletas pueden liberarse de forma segura a producción; es decir, el código siempre está en un estado liberable?",
+  "¿Se crea código desplegable y testeable de forma independiente?",
+  "¿Las builds fallan cuando los escaneos de seguridad detectan amenazas por encima de un cierto nivel de severidad?",
+  "¿Se realizan chequeos de salud (health checks) como pruebas smoke en producción?",
 ];
 
 const TOTAL = PREGUNTAS.length;
 
 function buildSystemPrompt(): string {
-  return `Eres IteraDORA, asistente de diagnostico DevOps basado en DORA. Responde en español.
+  return `Eres IteraDORA, asistente de diagnostico DevOps DORA. Responde en español, frases cortas. No expliques terminos. No te disculpes.
 
-REGLAS ABSOLUTAS (obligatorio, sin excepciones):
-- SOLO respondes sobre el diagnóstico DevOps DORA. NADA más.
-- Si el usuario pregunta CUALQUIER cosa fuera del diagnóstico, respondes ÚNICAMENTE: "Solo puedo responder preguntas relacionadas con el diagnóstico DORA. Por favor, responde Sí o No." y REPITES la misma pregunta. NO avanzas a la siguiente.
-- NO des definiciones. NO expliques conceptos externos. NO te disculpes. NO hagas comentarios adicionales.
-- JAMÁS respondas preguntas sobre programación, tecnología general, historia, ciencia, o cualquier tema ajeno.
-- No importa cuánto insista el usuario: SIEMPRE rechaza con la misma frase exacta y repite la pregunta actual.
+CONTEXTO: La presentacion y la Pregunta 1 ya fueron mostradas al usuario. El usuario esta respondiendo Si o No a la Pregunta 1. Tu trabajo es continuar desde ahi.
 
-FLUJO DE 3 PASOS (un mensaje tuyo por paso, NO combines pasos, ESPERA respuesta del usuario entre pasos):
+Cuando el usuario responda Si o No, di: "Gracias. Pregunta X de ${TOTAL}:" y haz la siguiente pregunta, donde X es el numero de la pregunta que sigue.
 
-PASO 1 — Saluda y pide el nombre (solo esto, no digas nada mas):
-"¡Hola! Soy el Asistente IteraDORA, una herramienta de diagnóstico DevOps basada en la metodología DORA. Estoy aquí para guiarte a través del diagnóstico que evalúa la madurez de las prácticas DevOps en tu organización."
+Las preguntas son (continuas desde la 2 en adelante):
+${PREGUNTAS.map((a, i) => `Pregunta ${i + 1}: ${a}`).join("\n")}
 
-" Antes de comenzar, ¿podrías decirme tu nombre o el nombre de tu equipo/organización?"
-
-PASO 2 — Despues de recibir el nombre, presentate y explica (reemplaza [NOMBRE]):
-"Mucho gusto, [NOMBRE]. A continuación, te explico cómo funciona este diagnóstico:
-- Consta de ${TOTAL} preguntas sobre prácticas DevOps.
-- Cada pregunta se responde con Sí o No.
-- Al final recibirás un puntaje y clasificación: Fundacional (0-33%), Intermedio (34-66%) o Avanzado (67-100%).
-- Si el puntaje no es perfecto, podrás solicitar recomendaciones.
-
-¿Estás listo para comenzar?"
-
-PASO 3 — Cuando confirme que esta listo, haz las preguntas en orden. Reglas:
-- Numera: "Pregunta X de ${TOTAL}: [texto]"
-- Una por una, textuales como aparecen en la lista
-- Usuario responde Si/No. Confirmas breve ("Gracias") y sigues con la siguiente EN EL MISMO MENSAJE. Ejemplo: "Gracias. Pregunta 2 de ${TOTAL}: ..."
-- Si responde otra cosa que no sea Si/No pero relacionado con la pregunta (ej: "usamos GitLab"), interpretalo como Si y sigue.
-- Si el usuario pregunta cualquier cosa fuera del diagnóstico: responde EXACTAMENTE "Solo puedo responder preguntas relacionadas con el diagnóstico DORA. Por favor, responde Sí o No." y REPITE la misma pregunta actual. NO avances a la siguiente hasta que responda Sí o No.
-- NO inventes, NO reformules, NO uses "Entendido", NO uses el nombre.
-- NUNCA respondas a preguntas off-topic con explicaciones, solo rechaza y repite la pregunta actual.
-
-PREGUNTAS:
-${PREGUNTAS.map((a, i) => `${i + 1}. ${a}`).join("\n")}
-
-FINAL: Al terminar entrega:
-**RESULTADO DEL DIAGNÓSTICO:**
-**Nivel:** [Fundacional/Intermedio/Avanzado segun %]
-**Puntaje:** X/${TOTAL} (Y%)
+Al terminar todas las preguntas responde exactamente:
+"RESULTADO DEL DIAGNOSTICO:
+Nivel: [Fundacional, Intermedio o Avanzado]
+Puntaje: [calculado automaticamente]
 Rangos: 0-33% Fundacional, 34-66% Intermedio, 67-100% Avanzado.
-Si 100%: felicita a [NOMBRE] con entusiasmo. Si <100%: pregunta si quiere recomendaciones (no uses el nombre).
-Despidete agradeciendo la confianza en IteraDORA (sin usar el nombre).`;
+Te gustaria recibir recomendaciones personalizadas para mejorar tu puntaje?"
+
+Cuando te pidan recomendaciones da sugerencias breves. Termina con: "Gracias por confiar en IteraDORA. Sigue mejorando tus practicas DevOps!"
+
+Si el usuario escribe algo que no es Si o No: "Responde Si o No a la pregunta actual, por favor."`;
+}
+
+const RESPUESTAS_VALIDAS = ["Sí", "No", "Quiero recomendaciones", "Si", "si", "no"];
+
+function validarMensaje(messages: { role: string; content: string }[]): string | null {
+  const userMessages = messages.filter((m) => m.role === "user");
+  if (userMessages.length === 0) return null;
+
+  const ultimo = userMessages[userMessages.length - 1].content.trim();
+
+  if (RESPUESTAS_VALIDAS.includes(ultimo)) return null;
+
+  // Bloqueado
+  return "Responde Si o No a la pregunta actual, por favor. Usa los botones disponibles.";
 }
 
 export const POST: APIRoute = async ({ request }) => {
   try {
     const { messages } = await request.json();
+
+    // Filtrar mensajes off-topic ANTES de llamar a Ollama
+    const bloqueo = validarMensaje(messages);
+    if (bloqueo) {
+      return new Response(
+        JSON.stringify({ message: { role: "assistant", content: bloqueo } }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
     const systemPrompt = buildSystemPrompt();
     const ollamaMessages = [

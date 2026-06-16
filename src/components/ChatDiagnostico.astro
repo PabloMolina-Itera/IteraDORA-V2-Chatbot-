@@ -1,29 +1,30 @@
-<section class="py-12 bg-gradient-to-b from-[#F7FAFC] to-[#E8EDF2] dark:from-[#001C26] dark:to-[#002633] min-h-[calc(100vh-80px)]">
-  <div class="max-w-3xl mx-auto px-4">
+﻿---
+import '../styles/chat-diagnostico.css';
+---
 
-    <div class="mb-8 text-center">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#00A8D8]/10 mb-4">
-        <span class="text-3xl">📊</span>
+<section class="w-full pt-4 pb-6 bg-gradient-to-b from-[#F7FAFC] to-[#E8EDF2] dark:from-[#001C26] dark:to-[#002633]" style="min-height: calc(100vh - 68px)">
+  <div class="max-w-2xl mx-auto px-4">
+
+    <div class="mb-3 text-center">
+      <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#00A8D8]/10 mb-3">
+        <span class="text-2xl">📊</span>
       </div>
-      <h1 class="text-3xl md:text-4xl font-extrabold text-[#00334E] dark:text-white mb-2">
+      <h1 class="text-2xl md:text-3xl font-extrabold text-[#00334E] dark:text-white mb-1">
         Diagnóstico DevOps
       </h1>
-      <p class="text-gray-500 dark:text-gray-400 text-sm max-w-md mx-auto">
+      <p class="text-gray-500 dark:text-gray-400 text-xs max-w-md mx-auto">
         Evaluación integral de madurez en prácticas DevOps basada en la metodología DORA.
       </p>
     </div>
 
-    <!-- CHAT CONTAINER -->
     <div
       id="chat-container"
-      class="bg-white dark:bg-[#0A3E52] rounded-3xl shadow-xl shadow-gray-200/50 dark:shadow-black/30 overflow-hidden border border-gray-100 dark:border-gray-700/50"
+      class="flex flex-col bg-white dark:bg-[#0A3E52] rounded-3xl shadow-xl shadow-gray-200/50 dark:shadow-black/30 overflow-hidden border border-gray-100 dark:border-gray-700/50"
+      style="height: 520px; max-height: calc(100vh - 280px);"
     >
-      <!-- Header -->
       <div class="bg-gradient-to-r from-[#00334E] to-[#004466] dark:from-[#002633] dark:to-[#00334E] px-5 py-4 flex items-center gap-3">
         <div class="relative">
-          <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-[#00A8D8] to-[#0095c2] flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-[#00A8D8]/30">
-            IA
-          </div>
+          <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-[#00A8D8] to-[#0095c2] flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-[#00A8D8]/30">IA</div>
           <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-[#00334E]"></span>
         </div>
         <div>
@@ -35,85 +36,53 @@
         </div>
       </div>
 
-      <!-- Messages area -->
       <div
         id="chat-messages"
-        class="p-5 space-y-4 overflow-y-auto bg-gradient-to-b from-gray-50/50 to-white dark:from-[#0A3E52]/50 dark:to-[#0A3E52]"
-        style="height: 480px; scroll-behavior: smooth;"
+        class="flex-1 p-5 space-y-4 overflow-y-auto bg-gradient-to-b from-gray-50/50 to-white dark:from-[#0A3E52]/50 dark:to-[#0A3E52]"
+        style="scroll-behavior: smooth;"
       >
-        <!-- Mensaje 1: Saludo (se ve al cargar la página sin esperar) -->
-        <div id="chat-welcome-1" class="flex items-end gap-2 justify-start">
-          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00A8D8] to-[#0095c2] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mb-1 shadow-md">
-            IA
-          </div>
+        <div class="flex items-end gap-2 justify-start">
+          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00A8D8] to-[#0095c2] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mb-1 shadow-md">IA</div>
           <div class="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-bl-md bg-white dark:bg-[#002633] text-[#00334E] dark:text-gray-100 border border-gray-100 dark:border-gray-700/50 text-sm leading-relaxed shadow-sm">
-            ¡Hola! Soy el Asistente IteraDORA, una herramienta de diagnóstico DevOps basada en la metodología DORA. Estoy aquí para guiarte a través del diagnóstico que evalúa la madurez de las prácticas DevOps en tu organización.
+            ¡Hola! Soy el Asistente IteraDORA, una herramienta de diagnóstico DevOps basada en la metodología DORA. Este diagnóstico consta de 11 preguntas Sí/No. Al final recibirás una clasificación: Fundacional (0-33%), Intermedio (34-66%) o Avanzado (67-100%).
           </div>
         </div>
-
-        <!-- Mensaje 2: Pide el nombre -->
-        <div id="chat-welcome-2" class="flex items-end gap-2 justify-start">
-          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00A8D8] to-[#0095c2] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mb-1 shadow-md">
-            IA
-          </div>
+        <div class="flex items-end gap-2 justify-start">
+          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00A8D8] to-[#0095c2] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mb-1 shadow-md">IA</div>
           <div class="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-bl-md bg-white dark:bg-[#002633] text-[#00334E] dark:text-gray-100 border border-gray-100 dark:border-gray-700/50 text-sm leading-relaxed shadow-sm">
-            Antes de comenzar, ¿podrías decirme tu nombre o el nombre de tu equipo/organización?
-            <br>
-            <span class="text-gray-400 dark:text-gray-500 text-xs">(Espero tu respuesta para seguir con el diagnóstico)</span>
+            Pregunta 1 de 11: ¿Las definiciones del pipeline están bajo control de código fuente (SCM) tales como GitHub, GitLab, etc.?
           </div>
         </div>
       </div>
 
-      <!-- Input area -->
-      <div class="border-t border-gray-100 dark:border-gray-700/50 px-4 py-3.5 bg-white dark:bg-[#0A3E52]">
-        <div class="flex gap-2.5">
-          <input
-            id="chat-input"
-            type="text"
-            placeholder="Escribe tu respuesta..."
-            class="flex-1 px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-600 bg-[#F7FAFC] dark:bg-[#001C26] text-[#00334E] dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-[#00A8D8]/40 focus:border-[#00A8D8] transition-all duration-200"
-          />
-          <button
-            id="chat-send"
-            class="px-5 py-3 bg-gradient-to-r from-[#00A8D8] to-[#0095c2] hover:from-[#0095c2] hover:to-[#0088b0] text-white rounded-2xl font-semibold text-sm transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-[#00A8D8]/20 active:scale-95"
-          >
-            Enviar
-          </button>
+      <!-- Botones Sí / No -->
+      <div id="btn-container" class="border-t border-gray-100 dark:border-gray-700/50 px-4 py-3 bg-white dark:bg-[#0A3E52]">
+        <div class="flex gap-3">
+          <button id="btn-si" class="flex-1 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm active:scale-95 bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20">✓  Sí</button>
+          <button id="btn-no" class="flex-1 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm active:scale-95 bg-red-500 hover:bg-red-600 text-white shadow-red-500/20">✗  No</button>
         </div>
+      </div>
+
+      <!-- Botón Recomendaciones (aparece después del resultado) -->
+      <div id="rec-container" class="hidden border-t border-gray-100 dark:border-gray-700/50 px-4 py-3 bg-white dark:bg-[#0A3E52]">
+        <button id="btn-rec" class="w-full py-3 rounded-2xl font-semibold text-sm transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm active:scale-95 bg-gradient-to-r from-[#00A8D8] to-[#0095c2] hover:from-[#0095c2] hover:to-[#0088b0] text-white shadow-[#00A8D8]/20">💡  Solicitar recomendaciones</button>
       </div>
     </div>
 
-    <!-- Result Card -->
-    <div
-      id="result-card"
-      class="hidden bg-white dark:bg-[#0A3E52] rounded-3xl shadow-2xl shadow-gray-300/50 dark:shadow-black/40 border border-gray-100 dark:border-gray-700/50 overflow-hidden mt-6 max-w-sm mx-auto"
-    >
+    <div id="result-card" class="hidden bg-white dark:bg-[#0A3E52] rounded-3xl shadow-2xl shadow-gray-300/50 dark:shadow-black/40 border border-gray-100 dark:border-gray-700/50 overflow-hidden mt-6 max-w-sm mx-auto">
       <div class="bg-gradient-to-r from-[#00334E] to-[#004466] px-5 py-3.5 flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-emerald-400/20 flex items-center justify-center text-emerald-300 font-bold text-sm">
-          ✓
-        </div>
+        <div class="w-9 h-9 rounded-xl bg-emerald-400/20 flex items-center justify-center text-emerald-300 font-bold text-sm">✓</div>
         <p class="text-white font-semibold text-sm">Diagnóstico Completado</p>
       </div>
       <div class="p-5 text-center">
         <div id="result-content" class="mb-5 text-[#00334E] dark:text-white text-sm space-y-2"></div>
         <div class="flex gap-2.5 justify-center">
-          <button
-            id="btn-volver-chat"
-            class="px-5 py-2.5 bg-gradient-to-r from-[#00A8D8] to-[#0095c2] hover:from-[#0095c2] hover:to-[#0088b0] text-white rounded-xl font-semibold text-xs transition-all duration-200 shadow-lg shadow-[#00A8D8]/20"
-          >
-            Regresar al chat
-          </button>
-          <button
-            id="btn-salir"
-            class="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-xl font-semibold text-xs transition-all duration-200"
-          >
-            Volver al inicio
-          </button>
+          <button id="btn-volver-chat" class="px-5 py-2.5 bg-gradient-to-r from-[#00A8D8] to-[#0095c2] hover:from-[#0095c2] hover:to-[#0088b0] text-white rounded-xl font-semibold text-xs transition-all duration-200 shadow-lg shadow-[#00A8D8]/20">Regresar al chat</button>
+          <button id="btn-salir" class="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-xl font-semibold text-xs transition-all duration-200">Volver al inicio</button>
         </div>
       </div>
     </div>
 
-    <!-- Disclaimer -->
     <p id="chat-disclaimer" class="text-xs text-gray-400 dark:text-gray-500 text-center mt-4">
       Responde con honestidad para obtener un diagnóstico preciso.
     </p>
@@ -121,370 +90,4 @@
   </div>
 </section>
 
-<script>
-  const messagesEl = document.getElementById("chat-messages")!;
-  const inputEl = document.getElementById("chat-input") as HTMLInputElement;
-  const sendBtn = document.getElementById("chat-send") as HTMLButtonElement;
-  const resultCard = document.getElementById("result-card")!;
-  const resultContent = document.getElementById("result-content")!;
-  const btnVolverChat = document.getElementById("btn-volver-chat")!;
-  const btnSalir = document.getElementById("btn-salir")!;
-  const chatDisclaimer = document.getElementById("chat-disclaimer")!;
-
-  const MENSAJE_SALUDO = "¡Hola! Soy el Asistente IteraDORA, una herramienta de diagnóstico DevOps basada en la metodología DORA. Estoy aquí para guiarte a través del diagnóstico que evalúa la madurez de las prácticas DevOps en tu organización.";
-  const MENSAJE_NOMBRE = "Antes de comenzar, ¿podrías decirme tu nombre o el nombre de tu equipo/organización?\n\n(Espero tu respuesta para seguir con el diagnóstico)";
-
-  // El mensaje de bienvenida ya está visible desde el HTML — sin esperas
-  let messages: { role: string; content: string }[] = [];
-  let isLoading = false;
-  let diagnosticoFinalizado = false;
-  let conversacionIniciada = false;
-
-  function scrollToBottom() {
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-  }
-
-  function addMessage(role: "user" | "assistant", content: string) {
-    const isUser = role === "user";
-    const bubble = document.createElement("div");
-    bubble.className = `flex items-end gap-2 ${isUser ? "justify-end" : "justify-start"} animate-fade-in`;
-
-    const avatarHtml = isUser ? "" : `
-      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00A8D8] to-[#0095c2] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mb-1 shadow-md">
-        IA
-      </div>
-    `;
-
-    const bg = isUser
-      ? "bg-gradient-to-br from-[#00A8D8] to-[#0095c2] text-white"
-      : "bg-white dark:bg-[#002633] text-[#00334E] dark:text-gray-100 border border-gray-100 dark:border-gray-700/50";
-
-    const radius = isUser
-      ? "rounded-2xl rounded-br-md"
-      : "rounded-2xl rounded-bl-md";
-
-    const widthClass = isUser ? "max-w-[75%]" : "max-w-[80%]";
-
-    bubble.innerHTML = `
-      ${avatarHtml}
-      <div class="${widthClass} px-4 py-2.5 ${radius} ${bg} text-sm leading-relaxed shadow-sm">
-        ${escapeHtml(content)}
-      </div>
-    `;
-
-    messagesEl.appendChild(bubble);
-    scrollToBottom();
-  }
-
-  function addTypingIndicator() {
-    const el = document.createElement("div");
-    el.id = "typing-indicator";
-    el.className = "flex items-end gap-2 justify-start animate-fade-in";
-    el.innerHTML = `
-      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00A8D8] to-[#0095c2] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mb-1 shadow-md">
-        IA
-      </div>
-      <div class="bg-white dark:bg-[#002633] border border-gray-100 dark:border-gray-700/50 px-4 py-3 rounded-2xl rounded-bl-md shadow-sm">
-        <div class="flex gap-1">
-          <span class="w-2 h-2 bg-[#00A8D8]/60 rounded-full animate-bounce" style="animation-delay:0s"></span>
-          <span class="w-2 h-2 bg-[#00A8D8]/60 rounded-full animate-bounce" style="animation-delay:0.15s"></span>
-          <span class="w-2 h-2 bg-[#00A8D8]/60 rounded-full animate-bounce" style="animation-delay:0.3s"></span>
-        </div>
-      </div>
-    `;
-    messagesEl.appendChild(el);
-    scrollToBottom();
-    return el;
-  }
-
-  function removeTypingIndicator() {
-    const el = document.getElementById("typing-indicator");
-    if (el) el.remove();
-  }
-
-  function escapeHtml(text: string) {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  function setInputEnabled(enabled: boolean) {
-    inputEl.disabled = !enabled;
-    sendBtn.disabled = !enabled;
-    sendBtn.textContent = "Enviar";
-  }
-
-  function parseResultado(content: string): { nivel: string; puntaje: string } | null {
-    const nivelMatch = content.match(/\*\*Nivel:\*\*\s*(.+)/);
-    const puntajeMatch = content.match(/\*\*Puntaje:\*\*\s*(.+)/);
-    if (nivelMatch && puntajeMatch) {
-      return { nivel: nivelMatch[1].trim(), puntaje: puntajeMatch[1].trim() };
-    }
-    return null;
-  }
-
-  function showResultCard(content: string) {
-    const resultado = parseResultado(content);
-    if (!resultado) return;
-
-    diagnosticoFinalizado = true;
-    setInputEnabled(false);
-    inputEl.placeholder = "Diagnóstico finalizado";
-
-    resultContent.innerHTML = `
-      <div class="flex flex-col gap-2 text-sm">
-        <div class="flex justify-between bg-[#F7FAFC] dark:bg-[#001C26] px-4 py-3 rounded-xl">
-          <span class="text-gray-500 dark:text-gray-400">Nivel</span>
-          <span class="font-bold text-[#00A8D8]">${escapeHtml(resultado.nivel)}</span>
-        </div>
-        <div class="flex justify-between bg-[#F7FAFC] dark:bg-[#001C26] px-4 py-3 rounded-xl">
-          <span class="text-gray-500 dark:text-gray-400">Puntaje</span>
-          <span class="font-bold text-[#00A8D8]">${escapeHtml(resultado.puntaje)}</span>
-        </div>
-      </div>
-    `;
-
-    resultCard.classList.remove("hidden");
-    chatDisclaimer.classList.add("hidden");
-    resultCard.scrollIntoView({ behavior: "smooth" });
-  }
-
-  btnVolverChat.addEventListener("click", () => {
-    resultCard.classList.add("hidden");
-    chatDisclaimer.classList.remove("hidden");
-    diagnosticoFinalizado = false;
-    setInputEnabled(true);
-    inputEl.placeholder = "Escribe tu respuesta...";
-    inputEl.focus();
-  });
-
-  btnSalir.addEventListener("click", () => {
-    window.location.href = "/";
-  });
-
-  function delay(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  // Detecta si el mensaje es el PASO 2 (tiene bullets + "listo para comenzar")
-  function esPaso2(content: string): boolean {
-    return content.includes("listo para comenzar") && content.includes("- ");
-  }
-
-  // Divide el PASO 2 en partes: saludo | bullets | pregunta final
-  function splitPaso2(content: string): string[] {
-    const lines = content.split("\n");
-    const greeting: string[] = [];
-    const bullets: string[] = [];
-    const closing: string[] = [];
-    let section: "greeting" | "bullets" | "closing" = "greeting";
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      if (trimmed.startsWith("-")) {
-        section = "bullets";
-        bullets.push(trimmed);
-      } else if (section === "bullets" && (trimmed.startsWith("¿") || trimmed.startsWith("¿"))) {
-        section = "closing";
-        closing.push(trimmed);
-      } else if (section === "closing") {
-        closing.push(trimmed);
-      } else {
-        greeting.push(trimmed);
-      }
-    }
-
-    const parts: string[] = [];
-    const g = greeting.join("\n");
-    if (g) parts.push(g);
-    const b = bullets.join("\n");
-    if (b) parts.push(b);
-    const c = closing.join("\n");
-    if (c) parts.push(c);
-
-    return parts.length >= 2 ? parts : [content];
-  }
-
-  // Detecta si es una pregunta del PASO 3: "Gracias. Pregunta X de 10: ..."
-  function esPregunta(content: string): boolean {
-    return /Pregunta \d+ de \d+:/i.test(content);
-  }
-
-  // Divide en: "Gracias. Pregunta X de 10:" | "¿texto de la pregunta?"
-  function splitPregunta(content: string): string[] {
-    const match = content.match(/^(.+?Pregunta \d+ de \d+:)\s*(.+)$/is);
-    if (match) {
-      return [match[1].trim(), match[2].trim()];
-    }
-    return [content];
-  }
-
-  // Detecta el mensaje final de resultados
-  function esResultado(content: string): boolean {
-    return content.includes("RESULTADO DEL DIAGN") && content.includes("Nivel:");
-  }
-
-  // Divide resultado en: intro | bloque RESULTADO | pregunta final
-  function splitResultado(content: string): string[] {
-    const parts: string[] = [];
-
-    // Parte 1: intro antes de "RESULTADO DEL DIAGNÓSTICO"
-    const introMatch = content.match(/^([\s\S]*?)RESULTADO DEL DIAGNÓSTICO:/i);
-    if (introMatch && introMatch[1].trim()) {
-      parts.push(introMatch[1].trim());
-    }
-
-    // Parte 2: bloque de resultado (RESULTADO ... hasta los rangos)
-    const bloqueMatch = content.match(/(RESULTADO DEL DIAGNÓSTICO:[\s\S]*?Rangos: [^\n]+)/i);
-    if (bloqueMatch) {
-      parts.push(bloqueMatch[1].trim());
-    } else {
-      // fallback: todo desde RESULTADO hasta antes de "¿"
-      const fallbackMatch = content.match(/(RESULTADO DEL DIAGNÓSTICO:[\s\S]*?)(?=\n\n¿|\n¿|$)/i);
-      if (fallbackMatch) {
-        parts.push(fallbackMatch[1].trim());
-      }
-    }
-
-    // Parte 3: pregunta final (¿...?)
-    const preguntaMatch = content.match(/(¿[^?]+\?)[^¿]*$/);
-    if (preguntaMatch) {
-      parts.push(preguntaMatch[1].trim());
-    }
-
-    return parts.length >= 2 ? parts : [content];
-  }
-
-  async function sendMessage() {
-    const content = inputEl.value.trim();
-    if (!content || isLoading) return;
-
-    inputEl.value = "";
-
-    // Primera vez: incluir el mensaje de bienvenida en el contexto
-    if (!conversacionIniciada) {
-      conversacionIniciada = true;
-      messages.push({ role: "assistant", content: MENSAJE_SALUDO });
-      messages.push({ role: "assistant", content: MENSAJE_NOMBRE });
-    }
-
-    addMessage("user", content);
-    messages.push({ role: "user", content });
-
-    isLoading = true;
-    setInputEnabled(false);
-    const typing = addTypingIndicator();
-
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages }),
-      });
-
-      removeTypingIndicator();
-
-      if (!res.ok) {
-        const err = await res.json();
-        addMessage("assistant", `Error: ${err.hint || err.error || "Error desconocido"}`);
-        return;
-      }
-
-      const data = await res.json();
-      const reply = data.message?.content || "Lo siento, no pude procesar tu respuesta.";
-
-      // PASO 2: dividir en burbujas (saludo → bullets → ¿listo?)
-      if (esPaso2(reply)) {
-        const partes = splitPaso2(reply);
-        for (let i = 0; i < partes.length; i++) {
-          await delay(800);
-          addMessage("assistant", partes[i]);
-        }
-      }
-      // PASO 3: dividir pregunta en "Gracias. Pregunta X de 10:" | pregunta
-      else if (esPregunta(reply)) {
-        const partes = splitPregunta(reply);
-        addMessage("assistant", partes[0]);
-        await delay(600);
-        addMessage("assistant", partes[1]);
-      }
-      // RESULTADO FINAL: dividir en intro | bloque resultado | pregunta final
-      else if (esResultado(reply)) {
-        const partes = splitResultado(reply);
-        for (let i = 0; i < partes.length; i++) {
-          await delay(700);
-          addMessage("assistant", partes[i]);
-        }
-        showResultCard(reply);
-      }
-      else {
-        addMessage("assistant", reply);
-      }
-      messages.push({ role: "assistant", content: reply });
-    } catch (err: any) {
-      removeTypingIndicator();
-      addMessage(
-        "assistant",
-        "No se pudo conectar con el asistente. Verifica que Ollama esté corriendo en tu equipo."
-      );
-    } finally {
-      isLoading = false;
-      if (!diagnosticoFinalizado) {
-        setInputEnabled(true);
-        inputEl.focus();
-      }
-    }
-  }
-
-  sendBtn.addEventListener("click", sendMessage);
-  inputEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  });
-
-  // El input ya está habilitado desde el HTML — el usuario puede escribir de inmediato
-  inputEl.focus();
-</script>
-
-<style>
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .animate-fade-in {
-    animation: fadeIn 0.35s ease forwards;
-  }
-
-  /* Custom scrollbar */
-  #chat-messages::-webkit-scrollbar {
-    width: 5px;
-  }
-  #chat-messages::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  #chat-messages::-webkit-scrollbar-thumb {
-    background: #d1d5db;
-    border-radius: 10px;
-  }
-  #chat-messages::-webkit-scrollbar-thumb:hover {
-    background: #9ca3af;
-  }
-  @media (prefers-color-scheme: dark) {
-    #chat-messages::-webkit-scrollbar-thumb {
-      background: #374151;
-    }
-    #chat-messages::-webkit-scrollbar-thumb:hover {
-      background: #4b5563;
-    }
-  }
-</style>
+<script src="../scripts/chat-diagnostico.ts"></script>

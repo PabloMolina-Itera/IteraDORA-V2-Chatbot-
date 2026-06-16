@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import Footer from "../components/Footer.astro";
 ---
 
 <BaseLayout title="IteraDORA - Diagnóstico DevOps basado en DORA">
@@ -94,7 +95,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     <!-- Mini stats -->
     <div class="flex flex-wrap items-center justify-center gap-6 sm:gap-10 reveal">
       <div>
-        <div class="text-2xl sm:text-3xl font-bold text-white">10</div>
+        <div class="text-2xl sm:text-3xl font-bold text-white">11</div>
         <div class="text-xs sm:text-sm text-gray-400">preguntas clave</div>
       </div>
       <div class="w-px h-8 bg-gray-600 hidden sm:block"></div>
@@ -279,7 +280,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           </h3>
 
           <p class="text-gray-500 dark:text-gray-400 leading-relaxed">
-            Responde 10 preguntas clave basadas en la metodología DORA. Sin configuraciones, sin fricción.
+            Responde 11 preguntas clave basadas en la metodología DORA. Sin configuraciones, sin fricción.
           </p>
 
           <div class="mt-5 inline-flex items-center gap-1.5
@@ -439,7 +440,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           </h3>
 
           <p class="relative z-10 text-gray-600 dark:text-gray-300 leading-relaxed mb-8 text-center">
-            Evaluá la madurez DevOps de tu organización con 10 preguntas clave basadas en la metodología DORA.
+            Evaluá la madurez DevOps de tu organización con 11 preguntas clave basadas en la metodología DORA.
             Al finalizar recibirás una clasificación: Fundacional, Intermedio o Avanzado.
           </p>
 
@@ -468,110 +469,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   </section>
 
 
- <footer class="bg-[#0A1929] dark:bg-[#000e17]
-               border-t border-gray-800
-               transition-colors duration-500">
-
-  <div class="max-w-7xl mx-auto px-6 pt-16 pb-10">
-
-    <!-- Grid principal -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
-
-      <!-- COL 1: Logo + descripción -->
-      <div class="lg:col-span-1">
-        <div class="flex items-center gap-3 mb-4">
-          <img
-            src="/logo-iteradora.png"
-            alt="IteraDORA"
-            class="h-9 object-contain brightness-0 invert"
-          />
-          <span class="text-gray-500 text-xs">by</span>
-          <span class="text-white font-bold text-sm tracking-wide">ITERA PROCESS</span>
-        </div>
-        <p class="text-sm text-gray-400 leading-relaxed mb-5">
-          Diagnóstico DevOps basado en la metodología DORA. Impulsado por Itera Process, especialistas en Cloud, Workflow Automation, AI y Data.
-        </p>
-        <!-- Redes sociales -->
-        <div class="flex items-center gap-3">
-          <a href="https://linkedin.com/company/itera-process" target="_blank" rel="noopener" title="LinkedIn" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-[#00A8D8]/20 flex items-center justify-center transition-colors">
-            <svg class="w-4 h-4 text-gray-400 hover:text-[#00A8D8]" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-          </a>
-          <a href="https://x.com/itera_process" target="_blank" rel="noopener" title="X" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-[#00A8D8]/20 flex items-center justify-center transition-colors">
-            <svg class="w-4 h-4 text-gray-400 hover:text-[#00A8D8]" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-          </a>
-          <a href="https://facebook.com/IteraProcess.latam" target="_blank" rel="noopener" title="Facebook" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-[#00A8D8]/20 flex items-center justify-center transition-colors">
-            <svg class="w-4 h-4 text-gray-400 hover:text-[#00A8D8]" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-          </a>
-          <a href="https://youtube.com/channel/UCI1pId21btcbTVK8NYVUZYg" target="_blank" rel="noopener" title="YouTube" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-[#00A8D8]/20 flex items-center justify-center transition-colors">
-            <svg class="w-4 h-4 text-gray-400 hover:text-[#00A8D8]" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-          </a>
-          <a href="https://instagram.com/itera.process" target="_blank" rel="noopener" title="Instagram" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-[#00A8D8]/20 flex items-center justify-center transition-colors">
-            <svg class="w-4 h-4 text-gray-400 hover:text-[#00A8D8]" fill="currentColor" viewBox="0 0 24 24"><path d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.06 1.802h-.51c-2.367 0-2.67.011-3.648.052-.88.04-1.358.187-1.676.31a2.81 2.81 0 00-1.042.675 2.81 2.81 0 00-.675 1.042c-.123.318-.27.796-.31 1.676-.04.98-.052 1.282-.052 3.648v.51c0 2.367.011 2.67.052 3.648.04.88.187 1.358.31 1.676.173.394.362.672.675 1.042.313.313.648.502 1.042.675.318.123.796.27 1.676.31.98.04 1.282.052 3.648.052h.51c2.367 0 2.67-.011 3.648-.052.88-.04 1.358-.187 1.676-.31a2.81 2.81 0 001.042-.675 2.81 2.81 0 00.675-1.042c.123-.318.27-.796.31-1.676.04-.98.052-1.282.052-3.648v-.51c0-2.367-.011-2.67-.052-3.648-.04-.88-.187-1.358-.31-1.676a2.81 2.81 0 00-.675-1.042 2.81 2.81 0 00-1.042-.675c-.318-.123-.796-.27-1.676-.31-.98-.04-1.282-.052-3.648-.052zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-2.072a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z"/></svg>
-          </a>
-        </div>
-      </div>
-
-      <!-- COL 2: Navegación -->
-      <div>
-        <h4 class="text-white font-semibold text-sm uppercase tracking-wider mb-4">IteraDORA</h4>
-        <ul class="space-y-2.5">
-          <li><a href="#inicio" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">Inicio</a></li>
-          <li><a href="#beneficios" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">Beneficios</a></li>
-          <li><a href="#diagnostico" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">Diagnóstico</a></li>
-          <li><a href="/diagnostico" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">Iniciar diagnóstico</a></li>
-        </ul>
-      </div>
-
-      <!-- COL 3: Itera Process -->
-      <div>
-        <h4 class="text-white font-semibold text-sm uppercase tracking-wider mb-4">Itera Process</h4>
-        <ul class="space-y-2.5">
-          <li><a href="https://iteraprocess.com/" target="_blank" rel="noopener" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">Sitio web</a></li>
-          <li><a href="https://iteraprocess.com/" target="_blank" rel="noopener" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">Servicios</a></li>
-          <li><a href="https://linkedin.com/company/itera-process" target="_blank" rel="noopener" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">LinkedIn</a></li>
-          <li><a href="mailto:info.mx.df@iteraprocess.com" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors">Contacto</a></li>
-        </ul>
-      </div>
-
-      <!-- COL 4: Contacto + Partners -->
-      <div>
-        <h4 class="text-white font-semibold text-sm uppercase tracking-wider mb-4">Contacto</h4>
-        <ul class="space-y-2.5 mb-5">
-          <li class="flex items-start gap-2">
-            <svg class="w-4 h-4 text-gray-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-            <a href="mailto:info.mx.df@iteraprocess.com" class="text-sm text-gray-400 hover:text-[#00A8D8] transition-colors break-all">info.mx.df@iteraprocess.com</a>
-          </li>
-          <li class="flex items-start gap-2">
-            <svg class="w-4 h-4 text-gray-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            <span class="text-sm text-gray-400">México · Colombia · Perú · España</span>
-          </li>
-        </ul>
-
-        <!-- Partners -->
-        <h4 class="text-white font-semibold text-sm uppercase tracking-wider mb-3">Partners</h4>
-        <div class="flex items-center gap-3">
-          <span class="text-xs text-gray-500 font-medium bg-white/5 px-2.5 py-1 rounded">AWS</span>
-          <span class="text-xs text-gray-500 font-medium bg-white/5 px-2.5 py-1 rounded">Atlassian</span>
-          <span class="text-xs text-gray-500 font-medium bg-white/5 px-2.5 py-1 rounded">IBM</span>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Línea final -->
-    <div class="pt-8 border-t border-gray-800 flex flex-col sm:flex-row justify-between items-center gap-4">
-      <p class="text-xs text-gray-500">
-        &copy; {new Date().getFullYear()} IteraDORA — Impulsado por Itera Process. Todos los derechos reservados.
-      </p>
-      <div class="flex gap-6 text-xs text-gray-500">
-        <a href="https://iteraprocess.com/" target="_blank" rel="noopener" class="hover:text-gray-300 transition-colors">Aviso de privacidad</a>
-        <a href="https://iteraprocess.com/" target="_blank" rel="noopener" class="hover:text-gray-300 transition-colors">Términos</a>
-      </div>
-    </div>
-
-  </div>
-
-</footer>
+  <Footer />
 </BaseLayout>
 
 <style is:global>
