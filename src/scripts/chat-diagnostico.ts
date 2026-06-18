@@ -12,6 +12,8 @@ function initChatDiagnostico() {
   const chatDisclaimer = document.getElementById("chat-disclaimer")!;
 
   const TOTAL_PREGUNTAS = 11;
+  const btnComenzar = document.getElementById("btn-comenzar") as HTMLButtonElement;
+  const bubblePregunta1 = document.getElementById("bubble-pregunta-1")!;
 
   let messages: { role: string; content: string }[] = [];
   let isLoading = false;
@@ -21,10 +23,26 @@ function initChatDiagnostico() {
   let chatTerminado = false;
   let respuestasSi = 0;
 
-  // Los botones Sí/No ya son visibles desde el inicio (Pregunta 1 en el HTML)
-  btnSi.disabled = false;
-  btnNo.disabled = false;
-  botonesVisibles = true;
+  // Los botones Sí/No y Pregunta 1 están ocultos hasta que se pulse "Comencemos"
+  btnSi.disabled = true;
+  btnNo.disabled = true;
+  botonesVisibles = false;
+
+  const comenzarContainer = document.getElementById("comenzar-container")!;
+
+  btnComenzar.addEventListener("click", () => {
+    btnComenzar.disabled = true;
+    btnComenzar.textContent = "Comenzando...";
+    setTimeout(() => {
+      comenzarContainer.classList.add("hidden");
+      bubblePregunta1.classList.remove("hidden");
+      btnContainer.classList.remove("hidden");
+      btnSi.disabled = false;
+      btnNo.disabled = false;
+      botonesVisibles = true;
+      scrollToBottom();
+    }, 400);
+  });
 
   function scrollToBottom() {
     messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -48,7 +66,7 @@ function initChatDiagnostico() {
       : "bg-white dark:bg-[#002633] text-[#00334E] dark:text-gray-100 border border-gray-100 dark:border-gray-700/50";
     const radius = isUser ? "rounded-2xl rounded-br-md" : "rounded-2xl rounded-bl-md";
     const widthClass = isUser ? "max-w-[75%]" : "max-w-[80%]";
-    bubble.innerHTML = `${avatarHtml}<div class="${widthClass} px-4 py-2.5 ${radius} ${bg} text-sm leading-relaxed shadow-sm">${escapeHtml(content)}</div>`;
+    bubble.innerHTML = `${avatarHtml}<div class="${widthClass} px-4 py-2.5 ${radius} ${bg} text-sm leading-relaxed shadow-sm whitespace-pre-line">${escapeHtml(content)}</div>`;
     messagesEl.appendChild(bubble);
     scrollToBottom();
   }
@@ -156,9 +174,16 @@ function initChatDiagnostico() {
   }
 
   function splitPregunta(content: string): string[] {
-    const match = content.match(/^(.+?Pregunta \d+ de \d+:)\s*(.+)$/is);
-    if (match) return [match[1].trim(), match[2].trim()];
-    return [content];
+    // Intenta separar en: [ánimo, "Pregunta X de Y:", contenido]
+    const match = content.match(/^(.+?)(Pregunta \d+ de \d+:)\s*(.+)$/is);
+    if (!match) return [content];
+    const antes = match[1].trim();
+    const header = match[2].trim();
+    const pregunta = match[3].trim();
+    if (antes) {
+      return [antes, header, pregunta];
+    }
+    return [header, pregunta];
   }
 
   function esResultado(content: string): boolean {
@@ -192,6 +217,10 @@ function initChatDiagnostico() {
       .replace(/FLUJO:?[\s\S]*?(?=\.|\n|$)/gi, "")
       .replace(/PASO \d[^:]*:[\s\S]*?(?=\n\n|\n\d|\n¿|$)/gi, "")
       .replace(/Off-topic:[\s\S]*?(?=\.|\n|$)/gi, "")
+      // Limpiar "IA" suelto y otras firmas que el modelo pueda inventar
+      .replace(/^IA\s*$/gim, "")
+      .replace(/^Asistente:?\s*$/gim, "")
+      .replace(/^Respuesta:?\s*$/gim, "")
       .trim();
   }
 
@@ -225,7 +254,10 @@ function initChatDiagnostico() {
       }
 
       const data = await res.json();
-      const fullReply = data.message?.content || "";
+      let fullReply = data.message?.content || "";
+
+      // Limpiar artefactos del modelo en todas las respuestas
+      fullReply = sanitizarTextoIA(fullReply);
 
       if (!fullReply) {
         const fallback = "Lo siento, no pude procesar tu respuesta.";
@@ -238,8 +270,7 @@ function initChatDiagnostico() {
       } else if (esPregunta(fullReply)) {
         showButtons(true);
         const partes = splitPregunta(fullReply);
-        addMessage("assistant", partes[0]);
-        addMessage("assistant", partes[1]);
+        for (let i = 0; i < partes.length; i++) addMessage("assistant", partes[i]);
         messages.push({ role: "assistant", content: fullReply });
       } else if (esResultado(fullReply)) {
         // Limpiar el texto de la IA: borrar numeros inventados y despedidas prematuras

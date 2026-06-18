@@ -44,19 +44,29 @@ import '../styles/chat-diagnostico.css';
         <div class="flex items-end gap-2 justify-start">
           <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00A8D8] to-[#0095c2] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mb-1 shadow-md">IA</div>
           <div class="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-bl-md bg-white dark:bg-[#002633] text-[#00334E] dark:text-gray-100 border border-gray-100 dark:border-gray-700/50 text-sm leading-relaxed shadow-sm">
-            ¡Hola! Soy el Asistente IteraDORA, una herramienta de diagnóstico DevOps basada en la metodología DORA. Este diagnóstico consta de 11 preguntas Sí/No. Al final recibirás una clasificación: Fundacional (0-33%), Intermedio (34-66%) o Avanzado (67-100%).
+            ¡Hola! 👋 Soy IteraDORA. Te ayudaré a evaluar el nivel de madurez DevOps de tu organización utilizando la metodología DORA.<br><br>
+            El diagnóstico es rápido: solo responderás 11 preguntas de Sí o No. Al finalizar, recibirás una clasificación y algunas recomendaciones para identificar oportunidades de mejora.
           </div>
         </div>
-        <div class="flex items-end gap-2 justify-start">
+        <div id="bubble-pregunta-1" class="hidden flex items-end gap-2 justify-start">
           <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00A8D8] to-[#0095c2] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mb-1 shadow-md">IA</div>
-          <div class="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-bl-md bg-white dark:bg-[#002633] text-[#00334E] dark:text-gray-100 border border-gray-100 dark:border-gray-700/50 text-sm leading-relaxed shadow-sm">
-            Pregunta 1 de 11: ¿Las definiciones del pipeline están bajo control de código fuente (SCM) tales como GitHub, GitLab, etc.?
-          </div>
+          <div class="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-bl-md bg-white dark:bg-[#002633] text-[#00334E] dark:text-gray-100 border border-gray-100 dark:border-gray-700/50 text-sm leading-relaxed shadow-sm whitespace-pre-line">
+Pregunta 1 de 11:
+
+Tema: Control de versiones y trazabilidad
+
+Para comenzar, revisemos cómo gestionan la configuración de sus procesos de integración y despliegue.
+
+¿Las definiciones del pipeline están bajo control de código fuente (SCM) como GitHub o GitLab?</div>
         </div>
       </div>
 
+      <!-- Botón Comencemos (inicial) -->
+      <div id="comenzar-container" class="border-t border-gray-100 dark:border-gray-700/50 px-4 py-3 bg-white dark:bg-[#0A3E52]">
+        <button id="btn-comenzar" class="w-full bg-gradient-to-r from-[#00A8D8] to-[#0095c2] hover:from-[#0095c2] hover:to-[#0088b0] text-white py-3 rounded-2xl font-semibold text-sm transition-all duration-200 shadow-md shadow-[#00A8D8]/20 active:scale-95">Comencemos</button>
+      </div>
       <!-- Botones Sí / No -->
-      <div id="btn-container" class="border-t border-gray-100 dark:border-gray-700/50 px-4 py-3 bg-white dark:bg-[#0A3E52]">
+      <div id="btn-container" class="hidden border-t border-gray-100 dark:border-gray-700/50 px-4 py-3 bg-white dark:bg-[#0A3E52]">
         <div class="flex gap-3">
           <button id="btn-si" class="flex-1 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm active:scale-95 bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20">✓  Sí</button>
           <button id="btn-no" class="flex-1 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm active:scale-95 bg-red-500 hover:bg-red-600 text-white shadow-red-500/20">✗  No</button>
