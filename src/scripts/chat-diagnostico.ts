@@ -1,4 +1,7 @@
 function initChatDiagnostico() {
+  // URL de la Lambda backend (cambiar por la Function URL real)
+  const API_URL = import.meta.env.PUBLIC_LAMBDA_URL || "/api/chat";
+
   const messagesEl = document.getElementById("chat-messages")!;
   const btnContainer = document.getElementById("btn-container")!;
   const btnSi = document.getElementById("btn-si") as HTMLButtonElement;
@@ -239,7 +242,7 @@ function initChatDiagnostico() {
     addTypingIndicator();
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages }),
@@ -322,7 +325,7 @@ function initChatDiagnostico() {
       removeTypingIndicator();
       addMessage(
         "assistant",
-        "No se pudo conectar con el asistente. Verifica que Ollama esté corriendo en tu equipo."
+        "No se pudo conectar con el asistente. Intenta de nuevo en unos segundos."
       );
     } finally {
       isLoading = false;

@@ -1,0 +1,14 @@
+{
+  "name": "iteradora-lambda",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Lambda backend para el chatbot IteraDORA - conecta con Ollama",
+  "main": "index.mjs",
+  "scripts": {
+    "bundle": "powershell -Command \"Compress-Archive -Path index.mjs,package.json -DestinationPath ../iteradora-lambda.zip -Force\"",
+    "bundle:bash": "zip -j ../iteradora-lambda.zip index.mjs package.json"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
+}
