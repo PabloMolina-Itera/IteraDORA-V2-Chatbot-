@@ -1,4 +1,15 @@
 version: 1
+
+# ─── Tags del proyecto (aplicar en consola Amplify o vía CLI al crear/actualizar la app) ───
+# aws amplify tag-resource \
+#   --resource-arn <AMPLIFY_APP_ARN> \
+#   --tags \
+#     proyecto=IteraDORA \
+#     "cliente=Itera / Preventa" \
+#     "arquitectos=Cristian Guzman, Juan Pablo Molina, Andryd Ibarra" \
+#     "PM=Xiomara Valencia" \
+#     "Aprobador=Sebastian Sanchez"
+
 frontend:
   phases:
     preBuild:
