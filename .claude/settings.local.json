@@ -17,7 +17,15 @@
       "Bash(curl -4 -s -X POST http://127.0.0.1:4321/api/debug -H \"Content-Type: application/json\" -d '{\"test\":\"hola\"}')",
       "Bash(curl -s -X POST \"http://[::1]:4321/api/debug\" -H \"Content-Type: application/json\" -d '{\"test\":\"hola\"}')",
       "WebSearch",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "PowerShell(git add amplify.yml)",
+      "PowerShell(git commit -m \"fix: corrige amplify.yml para build desde ra�z del proyecto\")",
+      "PowerShell(git push)",
+      "PowerShell(git pull --no-edit)",
+      "PowerShell(git commit -m \"fix: resuelve conflicto - amplify.yml desde ra�z del proyecto\")",
+      "PowerShell(Get-ChildItem -Recurse dist | Select-Object Mode, FullName | ForEach-Object { $_.FullName -replace [regex]::Escape\\($\\(Get-Location\\).Path + '\\\\dist'\\), 'dist' })",
+      "PowerShell(git commit -m \"fix: cambia baseDirectory a dist/client para Amplify static hosting\")",
+      "PowerShell(git add lambda/ src/scripts/chat-diagnostico.ts)"
     ]
   }
 }
