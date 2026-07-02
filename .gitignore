@@ -13,6 +13,9 @@ yarn-error.log*
 pnpm-debug.log*
 
 
+# lambda zip
+iteradora-lambda.zip
+
 # environment variables
 .env
 .env.production

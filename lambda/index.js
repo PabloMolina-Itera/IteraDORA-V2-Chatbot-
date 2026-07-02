@@ -1,0 +1,184 @@
+// ─── IteraDORA Lambda Backend ───
+// Usa AWS Bedrock (Claude) como motor de IA primario.
+// Soporta también Ollama como fallback opcional.
+//
+// Variables de entorno en AWS Lambda:
+//   BEDROCK_MODEL – Modelo de Bedrock (default: us.anthropic.claude-3-haiku-20240307-v1:0)
+//   OLLAMA_URL    – (Opcional) URL de Ollama si querés usarlo en vez de Bedrock
+//   OLLAMA_MODEL  – (Opcional) Modelo de Ollama (default: llama3.2:3b)
+//   CORS_ORIGIN   – Dominio del frontend (default: *)
+
+const { BedrockRuntimeClient, InvokeModelCommand } = require("@aws-sdk/client-bedrock-runtime");
+
+const OLLAMA_URL = process.env.OLLAMA_URL || "";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
+const BEDROCK_MODEL = process.env.BEDROCK_MODEL || "us.anthropic.claude-3-haiku-20240307-v1:0";
+const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
+const USE_OLLAMA = !!OLLAMA_URL;
+
+const bedrockClient = USE_OLLAMA ? null : new BedrockRuntimeClient({ region: process.env.AWS_REGION || "us-east-1" });
+
+// ─── PREGUNTAS ───
+var PREGUNTAS = [
+  "Tema: Control de versiones y trazabilidad\n\nPara comenzar, revisemos cómo gestionan la configuración de sus procesos de integración y despliegue.\n\n¿Las definiciones del pipeline están bajo control de código fuente (SCM) como GitHub o GitLab?",
+  "Tema: Infraestructura como Código\n\nLa automatización de la infraestructura ayuda a reducir errores manuales y mejorar la consistencia entre entornos.\n\n¿La Infraestructura como Código (IaC) se utiliza como estándar en su organización?",
+  "Tema: Integración Continua\n\nLa integración frecuente permite detectar problemas más rápido y reducir conflictos entre desarrolladores.\n\n¿El código se integra en la rama principal al menos una vez al día?",
+  "Tema: Estabilidad del pipeline\n\nUn pipeline inestable puede afectar significativamente la velocidad de entrega.\n\n¿Las builds o despliegues fallidos son tratados como la máxima prioridad por el equipo?",
+  "Tema: Calidad automatizada\n\nLos controles automáticos ayudan a mantener estándares de calidad consistentes.\n\n¿Las builds fallan automáticamente cuando no se cumplen los umbrales acordados de calidad, cobertura o análisis estático?",
+  "Tema: Automatización de despliegues\n\nEvaluemos el nivel de automatización de los entornos de desarrollo y pruebas.\n\n¿El pipeline despliega automáticamente los artefactos en el entorno más bajo disponible (Dev o Test)?",
+  "Tema: Feature Toggles\n\nLas banderas de funcionalidad permiten desplegar código sin exponer funcionalidades incompletas.\n\n¿Utilizan feature toggles para facilitar el desarrollo y la integración continua del equipo?",
+  "Tema: Estado liberable\n\nLas organizaciones con alta madurez DevOps suelen mantener su código en un estado constantemente desplegable.\n\n¿Las funcionalidades incompletas pueden liberarse de forma segura a producción sin afectar a los usuarios?",
+  "Tema: Arquitectura desacoplada\n\nLa independencia entre componentes facilita pruebas, despliegues y mantenimiento.\n\n¿El código puede desarrollarse, probarse y desplegarse de forma independiente?",
+  "Tema: Seguridad integrada\n\nLa seguridad es más efectiva cuando forma parte del pipeline de desarrollo.\n\n¿Las builds fallan automáticamente cuando los escaneos detectan vulnerabilidades por encima del nivel de riesgo aceptado?",
+  "Tema: Observabilidad y confiabilidad\n\nPor último, revisemos las prácticas de validación en producción.\n\n¿Se ejecutan health checks o pruebas smoke para verificar que los servicios funcionan correctamente después del despliegue?",
+];
+
+var TOTAL = PREGUNTAS.length;
+var RESPUESTAS_VALIDAS = ["Sí", "No", "Quiero recomendaciones", "Si", "si", "no"];
+
+function buildSystemPrompt() {
+  return "Eres IteraDORA, un asistente amigable que realiza diagnósticos DevOps usando la metodología DORA. Responde en español, con un tono profesional pero cálido y natural.\n\n" +
+    "REGLAS DE ORO:\n" +
+    "1. NUNCA mezcles una pregunta con el resultado final. Son pasos separados.\n" +
+    "2. Cuando presentas una pregunta, SOLO muestras esa pregunta. Nada más.\n" +
+    "3. El resultado SOLO se muestra después de que el usuario haya respondido la Pregunta 11 con Sí o No.\n" +
+    "4. Cada respuesta tuya contiene ÚNICAMENTE una cosa: o un mensaje de ánimo + siguiente pregunta, o el resultado final, o recomendaciones.\n\n" +
+    "CONTEXTO: La presentación y la Pregunta 1 ya fueron mostradas al usuario.\n\n" +
+    "FLUJO NORMAL (Preguntas 2 a 11):\n" +
+    "Cuando el usuario responda Sí o No, responde con:\n" +
+    "1. Un mensaje de ánimo (1 línea).\n" +
+    "2. Una línea en blanco.\n" +
+    "3. La siguiente pregunta en este formato: \"Pregunta X de " + TOTAL + ":\n\n[contenido]\"\n\n" +
+    "Las preguntas son (preséntalas en orden, de 2 a 11):\n" +
+    PREGUNTAS.map(function (t, i) { return "Pregunta " + (i + 1) + " de " + TOTAL + ":\n" + t; }).join("\n\n") + "\n\n" +
+    "SOLO DESPUÉS de que el usuario responda la Pregunta 11, respondes ÚNICAMENTE con:\n" +
+    "\"¡Terminamos! Aquí están tus resultados.\n\n" +
+    "RESULTADO DEL DIAGNÓSTICO:\n" +
+    "Nivel: [Fundacional, Intermedio o Avanzado]\n" +
+    "Puntaje: [calculado automáticamente]\n" +
+    "Rangos: 0-33% Fundacional, 34-66% Intermedio, 67-100% Avanzado.\n\n" +
+    "¿Te gustaría recibir recomendaciones personalizadas?\"\n\n" +
+    "Cuando el usuario pida recomendaciones, entrega un análisis con FORTALEZAS, OPORTUNIDADES DE MEJORA y CONCLUSIÓN. Agrupa por áreas temáticas. No uses frases como \"Fallaste en la pregunta 3\".\n\n" +
+    "Si el usuario escribe algo que no es Sí o No, responde: \"Responde Sí o No a la pregunta actual, por favor.\"";
+}
+
+function validarMensaje(messages) {
+  var userMessages = messages.filter(function (m) { return m.role === "user"; });
+  if (userMessages.length === 0) return null;
+  var ultimo = userMessages[userMessages.length - 1].content.trim();
+  if (RESPUESTAS_VALIDAS.indexOf(ultimo) !== -1) return null;
+  return "Responde Sí o No a la pregunta actual, por favor. Usa los botones disponibles.";
+}
+
+// ─── BEDROCK (CLAUDE) ───
+async function bedrockChat(messages) {
+  var systemMsg = messages.find(function (m) { return m.role === "system"; });
+  var systemText = systemMsg ? systemMsg.content : "";
+  var chatMessages = messages.filter(function (m) { return m.role !== "system"; }).map(function (m) {
+    return { role: m.role, content: [{ type: "text", text: m.content }] };
+  });
+
+  var body = JSON.stringify({
+    anthropic_version: "bedrock-2023-05-31",
+    max_tokens: 500,
+    temperature: 0.3,
+    system: systemText,
+    messages: chatMessages,
+  });
+
+  var command = new InvokeModelCommand({
+    modelId: BEDROCK_MODEL,
+    contentType: "application/json",
+    accept: "application/json",
+    body: body,
+  });
+
+  var response = await bedrockClient.send(command);
+  var result = JSON.parse(new TextDecoder().decode(response.body));
+  return (result.content && result.content[0] && result.content[0].text) ? result.content[0].text : "";
+}
+
+// ─── OLLAMA (FALLBACK) ───
+async function ollamaChat(messages) {
+  var response = await fetch(OLLAMA_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: OLLAMA_MODEL,
+      messages: messages,
+      stream: false,
+      options: { num_predict: 500, temperature: 0.3 },
+    }),
+  });
+  if (!response.ok) {
+    var text = await response.text();
+    throw new Error("Ollama error " + response.status + ": " + text.substring(0, 300));
+  }
+  var json = await response.json();
+  return (json.message && json.message.content) ? json.message.content : "";
+}
+
+// ─── LLAMADA UNIFICADA ───
+async function callAI(messages) {
+  if (USE_OLLAMA) return ollamaChat(messages);
+  return bedrockChat(messages);
+}
+
+// ─── HELPERS ───
+function corsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": CORS_ORIGIN,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+}
+
+function respond(statusCode, data) {
+  return {
+    statusCode: statusCode,
+    headers: Object.assign({ "Content-Type": "application/json" }, corsHeaders()),
+    body: JSON.stringify(data),
+  };
+}
+
+// ─── HANDLER ───
+exports.handler = async function (event) {
+  if ((event.requestContext && event.requestContext.http && event.requestContext.http.method === "OPTIONS") || event.httpMethod === "OPTIONS") {
+    return { statusCode: 204, headers: corsHeaders(), body: "" };
+  }
+
+  try {
+    var body = typeof event.body === "string" ? JSON.parse(event.body) : event.body;
+    var messages = body.messages;
+    if (!messages || !Array.isArray(messages)) {
+      return respond(400, { error: 'El body debe incluir { messages: [...] }' });
+    }
+
+    // Off-topic se bloquea sin llamar a la IA
+    var bloqueo = validarMensaje(messages);
+    if (bloqueo) {
+      return respond(200, { message: { role: "assistant", content: bloqueo } });
+    }
+
+    if (!USE_OLLAMA && !bedrockClient) {
+      return respond(503, { error: "No hay motor de IA configurado", hint: "Configura OLLAMA_URL o asegura que la Lambda tenga permisos para Bedrock." });
+    }
+
+    var systemPrompt = buildSystemPrompt();
+    var aiMessages = [{ role: "system", content: systemPrompt }].concat(messages);
+    var content = await callAI(aiMessages);
+
+    if (!content) {
+      return respond(500, { error: "El modelo no generó respuesta. Intenta de nuevo." });
+    }
+
+    return respond(200, { message: { role: "assistant", content: content } });
+
+  } catch (err) {
+    console.error("Lambda error:", err);
+    return respond(503, {
+      error: "Error al llamar al modelo de IA",
+      detail: err.message,
+    });
+  }
+};

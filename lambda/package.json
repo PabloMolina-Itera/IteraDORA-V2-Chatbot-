@@ -1,12 +1,10 @@
 {
   "name": "iteradora-lambda",
-  "version": "1.0.0",
-  "type": "module",
-  "description": "Lambda backend para el chatbot IteraDORA - conecta con Ollama",
-  "main": "index.mjs",
-  "scripts": {
-    "bundle": "powershell -Command \"Compress-Archive -Path index.mjs,package.json -DestinationPath ../iteradora-lambda.zip -Force\"",
-    "bundle:bash": "zip -j ../iteradora-lambda.zip index.mjs package.json"
+  "version": "2.0.0",
+  "description": "Lambda backend IteraDORA - AWS Bedrock (Claude) + Ollama fallback",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.700.0"
   },
   "engines": {
     "node": ">=18.x"
