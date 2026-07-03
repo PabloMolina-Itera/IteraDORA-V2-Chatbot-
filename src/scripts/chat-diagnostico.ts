@@ -13,6 +13,12 @@ function initChatDiagnostico() {
   const btnVolverChat = document.getElementById("btn-volver-chat")!;
   const btnSalir = document.getElementById("btn-salir")!;
   const chatDisclaimer = document.getElementById("chat-disclaimer")!;
+  const deepContainer = document.getElementById("deep-container")!;
+  const btnDeep = document.getElementById("btn-deep") as HTMLButtonElement;
+  const deepResultCard = document.getElementById("deep-result-card")!;
+  const deepResultContent = document.getElementById("deep-result-content")!;
+  const btnVolverDeep = document.getElementById("btn-volver-deep")!;
+  const btnSalirDeep = document.getElementById("btn-salir-deep")!;
 
   const TOTAL_PREGUNTAS = 11;
   const btnComenzar = document.getElementById("btn-comenzar") as HTMLButtonElement;
@@ -25,6 +31,19 @@ function initChatDiagnostico() {
   let resultadoMostrado = false;
   let chatTerminado = false;
   let respuestasSi = 0;
+
+  // ─── DIAGNÓSTICO PROFUNDO ───
+  let deepDiagnosticActive = false;
+  let deepDiagnosticLevel = "";
+  let deepUltimaCategoria = "";
+  let deepRespuestasPorCategoria: Record<string, number> = {};
+  const DEEP_PRACTICES: Record<string, Record<string, number>> = {
+    Fundacional: { CV: 1, BD: 2, EC: 3, AP: 5, IS: 6, IC: 2 },
+    Intermedio:  { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
+    Avanzado:    { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
+  };
+  let deepCategoriasCompletadas = 0;
+  let deepDiagnosticoFinalizado = false;
 
   // Los botones Sí/No y Pregunta 1 están ocultos hasta que se pulse "Comencemos"
   btnSi.disabled = true;
@@ -99,11 +118,22 @@ function initChatDiagnostico() {
     } else {
       btnContainer.classList.add("hidden");
       recContainer.classList.add("hidden");
+      deepContainer.classList.add("hidden");
       btnSi.disabled = true;
       btnNo.disabled = true;
       btnRec.disabled = true;
+      btnDeep.disabled = true;
       botonesVisibles = false;
     }
+  }
+
+  function showRecAndDeepButtons() {
+    btnContainer.classList.add("hidden");
+    recContainer.classList.remove("hidden");
+    deepContainer.classList.remove("hidden");
+    btnRec.disabled = false;
+    btnDeep.disabled = false;
+    botonesVisibles = true;
   }
 
   function showRecButton() {
@@ -118,23 +148,76 @@ function initChatDiagnostico() {
     btnSi.disabled = loading;
     btnNo.disabled = loading;
     btnRec.disabled = loading;
+    btnDeep.disabled = loading;
   }
 
   function delay(ms: number) {
     return new Promise((r) => setTimeout(r, ms));
   }
 
+  function computeLevel(): string {
+    const porcentaje = Math.round((respuestasSi / TOTAL_PREGUNTAS) * 100);
+    if (porcentaje <= 33) return "Fundacional";
+    else if (porcentaje <= 66) return "Intermedio";
+    else return "Avanzado";
+  }
+
   function showResultCard(_content: string) {
     const porcentaje = Math.round((respuestasSi / TOTAL_PREGUNTAS) * 100);
-    let nivel: string;
-    if (porcentaje <= 33) nivel = "Fundacional";
-    else if (porcentaje <= 66) nivel = "Intermedio";
-    else nivel = "Avanzado";
+    const nivel = computeLevel();
 
     resultContent.innerHTML = `<div class="flex flex-col gap-2 text-sm"><div class="flex justify-between bg-[#F7FAFC] dark:bg-[#001C26] px-4 py-3 rounded-xl"><span class="text-gray-500 dark:text-gray-400">Nivel</span><span class="font-bold text-[#00A8D8]">${nivel}</span></div><div class="flex justify-between bg-[#F7FAFC] dark:bg-[#001C26] px-4 py-3 rounded-xl"><span class="text-gray-500 dark:text-gray-400">Puntaje</span><span class="font-bold text-[#00A8D8]">${respuestasSi}/${TOTAL_PREGUNTAS} (${porcentaje}%)</span></div></div>`;
     resultCard.classList.remove("hidden");
     chatDisclaimer.classList.add("hidden");
     resultCard.scrollIntoView({ behavior: "smooth" });
+  }
+
+  // ─── PARSERS DIAGNÓSTICO PROFUNDO ───
+  function esPreguntaProfunda(content: string): boolean {
+    return /^\[(CV|BD|EC|AP|IS|IC)\]\s+Pregunta \d+ de \d+/im.test(content);
+  }
+
+  function extraerCategoria(content: string): string {
+    const match = content.match(/^\[(CV|BD|EC|AP|IS|IC)\]/im);
+    return match ? match[1].toUpperCase() : "";
+  }
+
+  function esResultadoProfundo(content: string): boolean {
+    return content.includes("=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===");
+  }
+
+  function parsearResultadosProfundos(content: string): Record<string, string> {
+    const resultados: Record<string, string> = {};
+    const lines = content.split("\n");
+    for (const line of lines) {
+      const match = line.match(/^(CV|BD|EC|AP|IS|IC):\s*(\d+\/\d+\s*\(\d+%\))/i);
+      if (match) {
+        resultados[match[1].toUpperCase()] = match[2].trim();
+      }
+    }
+    return resultados;
+  }
+
+  function showDeepResultCard(resultados: Record<string, string>) {
+    const catNames: Record<string, string> = {
+      CV: "Control de Versiones",
+      BD: "Build & Deploy",
+      EC: "Código y Estándares",
+      AP: "Automatización de Pruebas",
+      IS: "Seguridad",
+      IC: "Integración Continua"
+    };
+    const categories = ["CV", "BD", "EC", "AP", "IS", "IC"];
+    let html = '<div class="flex flex-col gap-2 text-sm">';
+    for (const cat of categories) {
+      const score = resultados[cat] || "0/0 (0%)";
+      html += '<div class="flex justify-between bg-[#F7FAFC] dark:bg-[#001C26] px-4 py-3 rounded-xl"><span class="text-gray-500 dark:text-gray-400">' + escapeHtml(catNames[cat] || cat) + '</span><span class="font-bold text-purple-600">' + escapeHtml(score) + '</span></div>';
+    }
+    html += '</div>';
+    deepResultContent.innerHTML = html;
+    deepResultCard.classList.remove("hidden");
+    chatDisclaimer.classList.add("hidden");
+    deepResultCard.scrollIntoView({ behavior: "smooth" });
   }
 
   function esPaso2(content: string): boolean {
@@ -231,10 +314,16 @@ function initChatDiagnostico() {
     const content = respuesta;
     if (!content || isLoading || chatTerminado) return;
 
-    // Contar respuestas Sí (el conteo empieza desde la primera pregunta)
-    if (content === "Sí") respuestasSi++;
+    // ── Contar Sí ──
+    if (deepDiagnosticActive) {
+      if (content.includes(":Si") && deepUltimaCategoria) {
+        deepRespuestasPorCategoria[deepUltimaCategoria] = (deepRespuestasPorCategoria[deepUltimaCategoria] || 0) + 1;
+      }
+    } else {
+      if (content === "Sí") respuestasSi++;
+    }
 
-    addMessage("user", content);
+    addMessage("user", content.replace(/^\[DEEP:[^\]]+\]:/, "").trim() || content);
     messages.push({ role: "user", content });
 
     isLoading = true;
@@ -262,7 +351,29 @@ function initChatDiagnostico() {
       // Limpiar artefactos del modelo en todas las respuestas
       fullReply = sanitizarTextoIA(fullReply);
 
-      if (!fullReply) {
+      // ── Diagnóstico Profundo ──
+      if (deepDiagnosticActive) {
+        if (esResultadoProfundo(fullReply)) {
+          deepDiagnosticoFinalizado = true;
+          deepDiagnosticActive = false;
+          const resultados = parsearResultadosProfundos(fullReply);
+          addMessage("assistant", "Diagnóstico profundo completado. Estos son tus resultados por categoría:");
+          await delay(500);
+          showDeepResultCard(resultados);
+          chatTerminado = true;
+          diagnosticoFinalizado = true;
+          showButtons(false);
+          messages.push({ role: "assistant", content: fullReply });
+        } else if (esPreguntaProfunda(fullReply)) {
+          deepUltimaCategoria = extraerCategoria(fullReply);
+          showButtons(true);
+          addMessage("assistant", fullReply);
+          messages.push({ role: "assistant", content: fullReply });
+        } else {
+          addMessage("assistant", fullReply);
+          messages.push({ role: "assistant", content: fullReply });
+        }
+      } else if (!fullReply) {
         const fallback = "Lo siento, no pude procesar tu respuesta.";
         addMessage("assistant", fallback);
         messages.push({ role: "assistant", content: fallback });
@@ -297,7 +408,7 @@ function initChatDiagnostico() {
           chatTerminado = true;
           diagnosticoFinalizado = true;
         } else {
-          showRecButton();
+          showRecAndDeepButtons();
         }
         messages.push({ role: "assistant", content: fullReply });
       } else if (resultadoMostrado) {
@@ -333,18 +444,58 @@ function initChatDiagnostico() {
     }
   }
 
-  btnSi.addEventListener("click", () => sendMessage("Sí"));
-  btnNo.addEventListener("click", () => sendMessage("No"));
+  btnSi.addEventListener("click", () => {
+    if (deepDiagnosticActive) {
+      sendMessage("[DEEP:" + deepDiagnosticLevel + "]:Si");
+    } else {
+      sendMessage("Sí");
+    }
+  });
+  btnNo.addEventListener("click", () => {
+    if (deepDiagnosticActive) {
+      sendMessage("[DEEP:" + deepDiagnosticLevel + "]:No");
+    } else {
+      sendMessage("No");
+    }
+  });
   btnRec.addEventListener("click", () => sendMessage("Quiero recomendaciones"));
+
+  btnDeep.addEventListener("click", () => {
+    showButtons(false);
+    recContainer.classList.add("hidden");
+    deepContainer.classList.add("hidden");
+    resultCard.classList.add("hidden");
+
+    deepDiagnosticLevel = computeLevel();
+    deepDiagnosticActive = true;
+    deepRespuestasPorCategoria = {};
+    deepUltimaCategoria = "";
+    deepCategoriasCompletadas = 0;
+    deepDiagnosticoFinalizado = false;
+
+    sendMessage("[DEEP:" + deepDiagnosticLevel + "]:INICIAR");
+  });
 
   btnVolverChat.addEventListener("click", () => {
     if (chatTerminado) return;
     resultCard.classList.add("hidden");
+    deepResultCard.classList.add("hidden");
     chatDisclaimer.classList.remove("hidden");
     messagesEl.scrollIntoView({ behavior: "smooth" });
   });
 
   btnSalir.addEventListener("click", () => {
+    window.location.href = "/";
+  });
+
+  btnVolverDeep.addEventListener("click", () => {
+    if (chatTerminado) return;
+    deepResultCard.classList.add("hidden");
+    chatDisclaimer.classList.remove("hidden");
+    messagesEl.scrollIntoView({ behavior: "smooth" });
+  });
+
+  btnSalirDeep.addEventListener("click", () => {
     window.location.href = "/";
   });
 

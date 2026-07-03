@@ -178,6 +178,70 @@ Si el usuario escribe algo que no es Sí o No, responde: "Responde Sí o No a la
 
 const RESPUESTAS_VALIDAS = ["Sí", "No", "Quiero recomendaciones", "Si", "si", "no"];
 
+// ─── DEEP DIAGNOSTIC PROMPT ───
+function buildDeepDiagnosticPrompt(level: string): string {
+  const practices: Record<string, Record<string, number>> = {
+    Fundacional:  { CV: 1, BD: 2, EC: 3, AP: 5, IS: 6, IC: 2 },
+    Intermedio:   { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
+    Avanzado:     { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
+  };
+  const cats = practices[level] || practices["Intermedio"];
+  const catNames: Record<string, string> = {
+    CV: "Control de Versiones", BD: "Build & Deploy Automation",
+    EC: "Code Standards & Quality Code", AP: "Test Automation",
+    IS: "Security Engineering", IC: "Continuous Integration"
+  };
+  const totalPracticas = Object.values(cats).reduce((a: number, b: number) => a + b, 0);
+
+  return `Eres IteraDORA, realizando un DIAGNÓSTICO PROFUNDO de madurez DevOps nivel ${level}.
+
+IMPORTANTE: Ya se completó el diagnóstico general de 11 preguntas. Ahora estás en la fase PROFUNDA.
+El usuario ya fue clasificado como nivel ${level}. NO repitas las preguntas del diagnóstico general.
+
+Haz preguntas de Sí/No sobre prácticas DevOps específicas para este nivel, organizadas por categoría.
+Haz UNA pregunta a la vez. No mezcles categorías en una misma respuesta.
+
+CATEGORÍAS (en este orden exacto):
+1. CV - ${catNames.CV} (${cats.CV} prácticas)
+2. BD - ${catNames.BD} (${cats.BD} prácticas)
+3. EC - ${catNames.EC} (${cats.EC} prácticas)
+4. AP - ${catNames.AP} (${cats.AP} prácticas)
+5. IS - ${catNames.IS} (${cats.IS} prácticas)
+6. IC - ${catNames.IC} (${cats.IC} prácticas)
+
+Total: ${totalPracticas} prácticas. Para cada una, pregunta si la organización YA implementa esa práctica (Sí/No).
+
+FORMATO DE CADA PREGUNTA (obligatorio):
+[CAT] Pregunta X de Y:
+[pregunta sobre la práctica]
+
+Ejemplo:
+[CV] Pregunta 1 de 2:
+¿El equipo utiliza estrategias avanzadas de branching como GitFlow o trunk-based development con short-lived branches?
+
+REGLAS:
+- Responde SIEMPRE con el formato [CAT] al inicio de cada pregunta
+- Cuando el usuario responda Sí o No, confirma brevemente (1 línea) y pasa a la siguiente pregunta
+- Las preguntas deben ser ESPECÍFICAS y RELEVANTES para el nivel ${level}
+- Para nivel Fundacional: pregunta sobre prácticas básicas (repositorios, primeros pipelines, documentación)
+- Para nivel Intermedio: pregunta sobre automatización, CI/CD, testing automatizado, monitoreo
+- Para nivel Avanzado: pregunta sobre canary releases, feature flags, SLOs, chaos engineering, DevSecOps
+
+DESPUÉS DE LA ÚLTIMA PREGUNTA (${totalPracticas} en total), muestra ÚNICAMENTE este bloque:
+
+=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===
+CV: [aciertos]/${cats.CV} ([porcentaje]%)
+BD: [aciertos]/${cats.BD} ([porcentaje]%)
+EC: [aciertos]/${cats.EC} ([porcentaje]%)
+AP: [aciertos]/${cats.AP} ([porcentaje]%)
+IS: [aciertos]/${cats.IS} ([porcentaje]%)
+IC: [aciertos]/${cats.IC} ([porcentaje]%)
+
+No agregues recomendaciones ni análisis después del bloque de resultados. Solo el bloque.
+
+Si el usuario escribe algo que no es Sí o No, responde: "Por favor, responde Sí o No a la pregunta actual."`;
+}
+
 function validarMensaje(messages: { role: string; content: string }[]): string | null {
   const userMessages = messages.filter((m) => m.role === "user");
   if (userMessages.length === 0) return null;
@@ -194,16 +258,34 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const { messages } = await request.json();
 
-    // Filtrar mensajes off-topic ANTES de llamar a Ollama
-    const bloqueo = validarMensaje(messages);
-    if (bloqueo) {
-      return new Response(
-        JSON.stringify({ message: { role: "assistant", content: bloqueo } }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      );
+    // ── Detectar modo diagnóstico profundo ──
+    let isDeepDiagnostic = false;
+    let deepLevel = "";
+
+    const lastMsg = messages.length > 0 ? (messages[messages.length - 1].content || "") : "";
+    const deepMatch = lastMsg.match(/^\[DEEP:(\w+)\]:/);
+    if (deepMatch) {
+      isDeepDiagnostic = true;
+      deepLevel = deepMatch[1];
+      let cleanContent = lastMsg.substring(deepMatch[0].length).trim();
+      if (!cleanContent || cleanContent.toUpperCase() === "INICIAR" || cleanContent.toUpperCase() === "INICIAR DIAGNÓSTICO" || cleanContent.toUpperCase() === "INICIAR DIAGNOSTICO") {
+        cleanContent = "Sí";
+      }
+      messages[messages.length - 1].content = cleanContent;
     }
 
-    const systemPrompt = buildSystemPrompt();
+    // Filtrar mensajes off-topic ANTES de llamar a Ollama (solo en modo general)
+    if (!isDeepDiagnostic) {
+      const bloqueo = validarMensaje(messages);
+      if (bloqueo) {
+        return new Response(
+          JSON.stringify({ message: { role: "assistant", content: bloqueo } }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    const systemPrompt = isDeepDiagnostic ? buildDeepDiagnosticPrompt(deepLevel) : buildSystemPrompt();
     const ollamaMessages = [
       { role: "system", content: systemPrompt },
       ...messages,

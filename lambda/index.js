@@ -62,6 +62,59 @@ function buildSystemPrompt() {
     "Si el usuario escribe algo que no es Sí o No, responde: \"Responde Sí o No a la pregunta actual, por favor.\"";
 }
 
+// ─── DEEP DIAGNOSTIC PROMPT ───
+function buildDeepDiagnosticPrompt(level) {
+  var practices = {
+    "Fundacional":  { CV: 1, BD: 2, EC: 3, AP: 5, IS: 6, IC: 2 },
+    "Intermedio":   { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
+    "Avanzado":     { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
+  };
+  var cats = practices[level] || practices["Intermedio"];
+  var catNames = {
+    CV: "Control de Versiones", BD: "Build & Deploy Automation",
+    EC: "Code Standards & Quality Code", AP: "Test Automation",
+    IS: "Security Engineering", IC: "Continuous Integration"
+  };
+  var totalPracticas = Object.values(cats).reduce(function (a, b) { return a + b; }, 0);
+
+  return "Eres IteraDORA, realizando un DIAGNÓSTICO PROFUNDO de madurez DevOps nivel " + level + ".\n\n" +
+    "IMPORTANTE: Ya se completó el diagnóstico general de 11 preguntas. Ahora estás en la fase PROFUNDA.\n" +
+    "El usuario ya fue clasificado como nivel " + level + ". NO repitas las preguntas del diagnóstico general.\n\n" +
+    "Haz preguntas de Sí/No sobre prácticas DevOps específicas para este nivel, organizadas por categoría.\n" +
+    "Haz UNA pregunta a la vez. No mezcles categorías en una misma respuesta.\n\n" +
+    "CATEGORÍAS (en este orden exacto):\n" +
+    "1. CV - " + catNames.CV + " (" + cats.CV + " prácticas)\n" +
+    "2. BD - " + catNames.BD + " (" + cats.BD + " prácticas)\n" +
+    "3. EC - " + catNames.EC + " (" + cats.EC + " prácticas)\n" +
+    "4. AP - " + catNames.AP + " (" + cats.AP + " prácticas)\n" +
+    "5. IS - " + catNames.IS + " (" + cats.IS + " prácticas)\n" +
+    "6. IC - " + catNames.IC + " (" + cats.IC + " prácticas)\n\n" +
+    "Total: " + totalPracticas + " prácticas. Para cada una, pregunta si la organización YA implementa esa práctica (Sí/No).\n\n" +
+    "FORMATO DE CADA PREGUNTA (obligatorio):\n" +
+    "[CAT] Pregunta X de Y:\n" +
+    "[pregunta sobre la práctica]\n\n" +
+    "Ejemplo:\n" +
+    "[CV] Pregunta 1 de 2:\n" +
+    "¿El equipo utiliza estrategias avanzadas de branching como GitFlow o trunk-based development con short-lived branches?\n\n" +
+    "REGLAS:\n" +
+    "- Responde SIEMPRE con el formato [CAT] al inicio de cada pregunta\n" +
+    "- Cuando el usuario responda Sí o No, confirma brevemente (1 línea) y pasa a la siguiente pregunta\n" +
+    "- Las preguntas deben ser ESPECÍFICAS y RELEVANTES para el nivel " + level + "\n" +
+    "- Para nivel Fundacional: pregunta sobre prácticas básicas (repositorios, primeros pipelines, documentación)\n" +
+    "- Para nivel Intermedio: pregunta sobre automatización, CI/CD, testing automatizado, monitoreo\n" +
+    "- Para nivel Avanzado: pregunta sobre canary releases, feature flags, SLOs, chaos engineering, DevSecOps\n\n" +
+    "DESPUÉS DE LA ÚLTIMA PREGUNTA (" + totalPracticas + " en total), muestra ÚNICAMENTE este bloque:\n\n" +
+    "=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===\n" +
+    "CV: [aciertos]/" + cats.CV + " ([porcentaje]%)\n" +
+    "BD: [aciertos]/" + cats.BD + " ([porcentaje]%)\n" +
+    "EC: [aciertos]/" + cats.EC + " ([porcentaje]%)\n" +
+    "AP: [aciertos]/" + cats.AP + " ([porcentaje]%)\n" +
+    "IS: [aciertos]/" + cats.IS + " ([porcentaje]%)\n" +
+    "IC: [aciertos]/" + cats.IC + " ([porcentaje]%)\n\n" +
+    "No agregues recomendaciones ni análisis después del bloque de resultados. Solo el bloque.\n\n" +
+    "Si el usuario escribe algo que no es Sí o No, responde: \"Por favor, responde Sí o No a la pregunta actual.\"";
+}
+
 function validarMensaje(messages) {
   var userMessages = messages.filter(function (m) { return m.role === "user"; });
   if (userMessages.length === 0) return null;
@@ -154,17 +207,38 @@ exports.handler = async function (event) {
       return respond(400, { error: 'El body debe incluir { messages: [...] }' });
     }
 
-    // Off-topic se bloquea sin llamar a la IA
-    var bloqueo = validarMensaje(messages);
-    if (bloqueo) {
-      return respond(200, { message: { role: "assistant", content: bloqueo } });
+    // ── Detectar modo diagnóstico profundo ──
+    var isDeepDiagnostic = false;
+    var deepLevel = "";
+    var originalMessages = messages;
+
+    var lastMsg = messages.length > 0 ? (messages[messages.length - 1].content || "") : "";
+    var deepMatch = lastMsg.match(/^\[DEEP:(\w+)\]:/);
+    if (deepMatch) {
+      isDeepDiagnostic = true;
+      deepLevel = deepMatch[1];
+      var cleanContent = lastMsg.substring(deepMatch[0].length).trim();
+      if (!cleanContent || cleanContent.toUpperCase() === "INICIAR" || cleanContent.toUpperCase() === "INICIAR DIAGNÓSTICO" || cleanContent.toUpperCase() === "INICIAR DIAGNOSTICO") {
+        cleanContent = "Sí";
+      }
+      // Reconstruir mensajes sin el prefijo
+      messages = JSON.parse(JSON.stringify(messages));
+      messages[messages.length - 1].content = cleanContent;
+    }
+
+    // Off-topic se bloquea sin llamar a la IA (solo en modo general)
+    if (!isDeepDiagnostic) {
+      var bloqueo = validarMensaje(messages);
+      if (bloqueo) {
+        return respond(200, { message: { role: "assistant", content: bloqueo } });
+      }
     }
 
     if (!USE_OLLAMA && !bedrockClient) {
       return respond(503, { error: "No hay motor de IA configurado", hint: "Configura OLLAMA_URL o asegura que la Lambda tenga permisos para Bedrock." });
     }
 
-    var systemPrompt = buildSystemPrompt();
+    var systemPrompt = isDeepDiagnostic ? buildDeepDiagnosticPrompt(deepLevel) : buildSystemPrompt();
     var aiMessages = [{ role: "system", content: systemPrompt }].concat(messages);
     var content = await callAI(aiMessages);
 
