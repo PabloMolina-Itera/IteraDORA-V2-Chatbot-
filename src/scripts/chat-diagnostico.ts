@@ -182,6 +182,11 @@ function initChatDiagnostico() {
     return match ? match[1].toUpperCase() : "";
   }
 
+  // Quita el prefijo [CV] del texto mostrado al usuario
+  function limpiarPrefijoCat(content: string): string {
+    return content.replace(/^\[(CV|BD|EC|AP|IS|IC)\]\s*/, "");
+  }
+
   function esResultadoProfundo(content: string): boolean {
     return content.includes("=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===");
   }
@@ -211,7 +216,7 @@ function initChatDiagnostico() {
     let html = '<div class="flex flex-col gap-2 text-sm">';
     for (const cat of categories) {
       const score = resultados[cat] || "0/0 (0%)";
-      html += '<div class="flex justify-between bg-[#F7FAFC] dark:bg-[#001C26] px-4 py-3 rounded-xl"><span class="text-gray-500 dark:text-gray-400">' + escapeHtml(catNames[cat] || cat) + '</span><span class="font-bold text-purple-600">' + escapeHtml(score) + '</span></div>';
+      html += '<div class="flex justify-between bg-[#F7FAFC] dark:bg-[#001C26] px-4 py-3 rounded-xl"><span class="text-gray-500 dark:text-gray-400">' + escapeHtml(catNames[cat] || cat) + '</span><span class="font-bold text-[#3E7CB5]">' + escapeHtml(score) + '</span></div>';
     }
     html += '</div>';
     deepResultContent.innerHTML = html;
@@ -323,7 +328,10 @@ function initChatDiagnostico() {
       if (content === "Sí") respuestasSi++;
     }
 
-    addMessage("user", content.replace(/^\[DEEP:[^\]]+\]:/, "").trim() || content);
+    // Mostrar mensaje limpio al usuario (sin prefijo técnico)
+    const displayContent = content.replace(/^\[DEEP:[^\]]+\]:/, "").trim();
+    const userDisplay = displayContent === "INICIAR" ? "Iniciar diagnóstico profundo" : displayContent || content;
+    addMessage("user", userDisplay);
     messages.push({ role: "user", content });
 
     isLoading = true;
@@ -367,10 +375,10 @@ function initChatDiagnostico() {
         } else if (esPreguntaProfunda(fullReply)) {
           deepUltimaCategoria = extraerCategoria(fullReply);
           showButtons(true);
-          addMessage("assistant", fullReply);
+          addMessage("assistant", limpiarPrefijoCat(fullReply));
           messages.push({ role: "assistant", content: fullReply });
         } else {
-          addMessage("assistant", fullReply);
+          addMessage("assistant", limpiarPrefijoCat(fullReply));
           messages.push({ role: "assistant", content: fullReply });
         }
       } else if (!fullReply) {
@@ -402,14 +410,7 @@ function initChatDiagnostico() {
         showResultCard(textoLimpio);
         resultadoMostrado = true;
 
-        if (respuestasSi === TOTAL_PREGUNTAS) {
-          showButtons(false);
-          btnVolverChat.classList.add("hidden");
-          chatTerminado = true;
-          diagnosticoFinalizado = true;
-        } else {
-          showRecAndDeepButtons();
-        }
+        showRecButton();
         messages.push({ role: "assistant", content: fullReply });
       } else if (resultadoMostrado) {
         const goodbyeMatch = fullReply.match(/(Gracias por confiar[^]*)$/i);
@@ -422,12 +423,12 @@ function initChatDiagnostico() {
           addMessage("assistant", fullReply);
         }
         diagnosticoFinalizado = true;
-        chatTerminado = true;
-        showButtons(false);
-        btnVolverChat.classList.add("hidden");
-        resultCard.classList.remove("hidden");
-        resultCard.scrollIntoView({ behavior: "smooth" });
-        messages.push({ role: "assistant", content: fullReply });
+        // Mostrar botón de diagnóstico profundo después de ver las recomendaciones
+        btnContainer.classList.add("hidden");
+        recContainer.classList.add("hidden");
+        deepContainer.classList.remove("hidden");
+        btnDeep.disabled = false;
+        botonesVisibles = true;
       } else {
         addMessage("assistant", fullReply);
         messages.push({ role: "assistant", content: fullReply });
@@ -473,6 +474,13 @@ function initChatDiagnostico() {
     deepCategoriasCompletadas = 0;
     deepDiagnosticoFinalizado = false;
 
+    // Limpiar historial para que la IA empiece fresca el diagnóstico profundo
+    messages = [];
+    chatTerminado = false;
+    diagnosticoFinalizado = false;
+    resultadoMostrado = false;
+
+    addMessage("assistant", "Iniciando diagnóstico profundo nivel " + deepDiagnosticLevel + "...");
     sendMessage("[DEEP:" + deepDiagnosticLevel + "]:INICIAR");
   });
 

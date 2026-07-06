@@ -78,8 +78,8 @@ function buildDeepDiagnosticPrompt(level) {
   var totalPracticas = Object.values(cats).reduce(function (a, b) { return a + b; }, 0);
 
   return "Eres IteraDORA, realizando un DIAGNÓSTICO PROFUNDO de madurez DevOps nivel " + level + ".\n\n" +
-    "IMPORTANTE: Ya se completó el diagnóstico general de 11 preguntas. Ahora estás en la fase PROFUNDA.\n" +
-    "El usuario ya fue clasificado como nivel " + level + ". NO repitas las preguntas del diagnóstico general.\n\n" +
+    "IMPORTANTE: El diagnóstico general YA TERMINÓ. Esto es el DIAGNÓSTICO PROFUNDO.\n" +
+    "El usuario es nivel " + level + ". IGNORA mensajes anteriores. PROHIBIDO usar 'Pregunta X de 11'. Solo formato [CAT].\n\n" +
     "Haz preguntas de Sí/No sobre prácticas DevOps específicas para este nivel, organizadas por categoría.\n" +
     "Haz UNA pregunta a la vez. No mezcles categorías en una misma respuesta.\n\n" +
     "CATEGORÍAS (en este orden exacto):\n" +
@@ -90,16 +90,26 @@ function buildDeepDiagnosticPrompt(level) {
     "5. IS - " + catNames.IS + " (" + cats.IS + " prácticas)\n" +
     "6. IC - " + catNames.IC + " (" + cats.IC + " prácticas)\n\n" +
     "Total: " + totalPracticas + " prácticas. Para cada una, pregunta si la organización YA implementa esa práctica (Sí/No).\n\n" +
-    "FORMATO DE CADA PREGUNTA (obligatorio):\n" +
-    "[CAT] Pregunta X de Y:\n" +
-    "[pregunta sobre la práctica]\n\n" +
-    "Ejemplo:\n" +
-    "[CV] Pregunta 1 de 2:\n" +
-    "¿El equipo utiliza estrategias avanzadas de branching como GitFlow o trunk-based development con short-lived branches?\n\n" +
+    "FORMATO DE CADA PREGUNTA (OBLIGATORIO - o el sistema fallará):\n" +
+    "[XX] Pregunta X de " + totalPracticas + ":\n\n" +
+    "Tema: [título corto y descriptivo de la práctica]\n\n" +
+    "[Una o dos líneas explicando brevemente por qué esta práctica es importante]\n\n" +
+    "¿[pregunta concreta que se responda con Sí o No]?\n\n" +
+    "Donde [XX] es el código REAL de categoría (CV, BD, EC, AP, IS, IC). NO uses [CAT] literal.\n" +
+    "X = número secuencial global, de 1 hasta " + totalPracticas + ". NO reinicies el conteo por categoría.\n\n" +
+    "Ejemplo (primera pregunta del diagnóstico):\n" +
+    "[CV] Pregunta 1 de " + totalPracticas + ":\n\n" +
+    "Tema: Estrategia de Branching\n\n" +
+    "Las estrategias de branching definen cómo el equipo organiza y gestiona las ramas del repositorio.\n\n" +
+    "¿El equipo utiliza trunk-based development o GitFlow con short-lived branches?\n\n" +
     "REGLAS:\n" +
-    "- Responde SIEMPRE con el formato [CAT] al inicio de cada pregunta\n" +
-    "- Cuando el usuario responda Sí o No, confirma brevemente (1 línea) y pasa a la siguiente pregunta\n" +
-    "- Las preguntas deben ser ESPECÍFICAS y RELEVANTES para el nivel " + level + "\n" +
+    "- EMPIEZA INMEDIATAMENTE con la primera pregunta. No introducciones ni resúmenes.\n" +
+    "- MUESTRA UNA SOLA PREGUNTA. No listes ni adelantes categorías.\n" +
+    "- USA el formato [CAT] al inicio de cada pregunta\n" +
+    "- Cuando el usuario responda Sí o No, confirma (1 línea) y siguiente pregunta\n" +
+    "- NO des recomendaciones ni análisis hasta completar TODAS las preguntas\n" +
+    "- NO termines la pregunta con ¿Sí o No? ni frases similares. La pregunta debe ser natural.\n" +
+    "- Preguntas ESPECÍFICAS para nivel " + level + "\n" +
     "- Para nivel Fundacional: pregunta sobre prácticas básicas (repositorios, primeros pipelines, documentación)\n" +
     "- Para nivel Intermedio: pregunta sobre automatización, CI/CD, testing automatizado, monitoreo\n" +
     "- Para nivel Avanzado: pregunta sobre canary releases, feature flags, SLOs, chaos engineering, DevSecOps\n\n" +
@@ -219,7 +229,7 @@ exports.handler = async function (event) {
       deepLevel = deepMatch[1];
       var cleanContent = lastMsg.substring(deepMatch[0].length).trim();
       if (!cleanContent || cleanContent.toUpperCase() === "INICIAR" || cleanContent.toUpperCase() === "INICIAR DIAGNÓSTICO" || cleanContent.toUpperCase() === "INICIAR DIAGNOSTICO") {
-        cleanContent = "Sí";
+        cleanContent = "Quiero iniciar el diagnostico profundo de nivel " + deepLevel;
       }
       // Reconstruir mensajes sin el prefijo
       messages = JSON.parse(JSON.stringify(messages));
