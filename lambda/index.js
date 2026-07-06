@@ -36,34 +36,42 @@ var PREGUNTAS = [
 var TOTAL = PREGUNTAS.length;
 var RESPUESTAS_VALIDAS = ["Sí", "No", "Quiero recomendaciones", "Si", "si", "no"];
 
-function buildSystemPrompt() {
-  return "Eres IteraDORA, un asistente amigable que realiza diagnósticos DevOps usando la metodología DORA. Responde en español, con un tono profesional pero cálido y natural.\n\n" +
+function buildSystemPrompt(respuestasCount) {
+  if (typeof respuestasCount !== "number") respuestasCount = 0;
+
+  var base = "Eres IteraDORA, un asistente amigable que realiza diagnósticos DevOps usando la metodología DORA. Responde en español, con un tono profesional pero cálido y natural.\n\n" +
     "REGLAS DE ORO:\n" +
     "1. NUNCA mezcles una pregunta con el resultado final. Son pasos separados.\n" +
     "2. Cuando presentas una pregunta, SOLO muestras esa pregunta. Nada más.\n" +
     "3. El resultado SOLO se muestra después de que el usuario haya respondido la Pregunta 11 con Sí o No.\n" +
     "4. Cada respuesta tuya contiene ÚNICAMENTE una cosa: o un mensaje de ánimo + siguiente pregunta, o el resultado final, o recomendaciones.\n\n" +
     "CONTEXTO: La presentación y la Pregunta 1 ya fueron mostradas al usuario.\n\n" +
-    "FLUJO NORMAL (Preguntas 2 a 11):\n" +
-    "Cuando el usuario responda Sí o No, responde con:\n" +
-    "1. Un mensaje de ánimo (1 línea).\n" +
-    "2. Una línea en blanco.\n" +
-    "3. La siguiente pregunta en este formato: \"Pregunta X de " + TOTAL + ":\n\n[contenido]\"\n\n" +
-    "Las preguntas son (preséntalas en orden, de 2 a 11):\n" +
+    "Las preguntas de referencia son:\n" +
     PREGUNTAS.map(function (t, i) { return "Pregunta " + (i + 1) + " de " + TOTAL + ":\n" + t; }).join("\n\n") + "\n\n" +
-    "SOLO DESPUÉS de que el usuario responda la Pregunta 11, respondes ÚNICAMENTE con:\n" +
-    "\"¡Terminamos! Aquí están tus resultados.\n\n" +
-    "RESULTADO DEL DIAGNÓSTICO:\n" +
-    "Nivel: [Fundacional, Intermedio o Avanzado]\n" +
-    "Puntaje: [calculado automáticamente]\n" +
-    "Rangos: 0-33% Fundacional, 34-66% Intermedio, 67-100% Avanzado.\n\n" +
-    "¿Te gustaría recibir recomendaciones personalizadas?\"\n\n" +
     "Cuando el usuario pida recomendaciones, entrega un análisis con FORTALEZAS, OPORTUNIDADES DE MEJORA y CONCLUSIÓN. Agrupa por áreas temáticas. No uses frases como \"Fallaste en la pregunta 3\".\n\n" +
     "Si el usuario escribe algo que no es Sí o No, responde: \"Responde Sí o No a la pregunta actual, por favor.\"";
+
+  // ── Instrucción dinámica según conteo REAL de respuestas ──
+  if (respuestasCount >= TOTAL) {
+    base += "\n\n⚠️ INSTRUCCIÓN FINAL: El usuario ya respondió las " + TOTAL + " preguntas. Muestra el RESULTADO o RECOMENDACIONES según el último mensaje del usuario. PROHIBIDO inventar más preguntas.";
+  } else if (respuestasCount > 0) {
+    var idx = respuestasCount; // índice de la PRÓXIMA pregunta (0-based)
+    if (idx < PREGUNTAS.length) {
+      base += "\n\n⚠️ INSTRUCCIÓN OBLIGATORIA: El backend confirma que el usuario respondió la Pregunta " + respuestasCount + ". Muestra ÚNICAMENTE esto:\n\n" +
+        "[1 línea de ánimo]\n\n" +
+        "Pregunta " + (respuestasCount + 1) + " de " + TOTAL + ":\n\n" +
+        PREGUNTAS[idx] + "\n\n" +
+        "NO muestres otra pregunta distinta. NO te saltes preguntas. NO muestres resultados aún.";
+    }
+  }
+
+  return base;
 }
 
 // ─── DEEP DIAGNOSTIC PROMPT ───
-function buildDeepDiagnosticPrompt(level) {
+function buildDeepDiagnosticPrompt(level, respuestasCount) {
+  if (typeof respuestasCount !== "number") respuestasCount = 0;
+
   var practices = {
     "Fundacional":  { CV: 1, BD: 2, EC: 3, AP: 5, IS: 6, IC: 2 },
     "Intermedio":   { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
@@ -77,7 +85,7 @@ function buildDeepDiagnosticPrompt(level) {
   };
   var totalPracticas = Object.values(cats).reduce(function (a, b) { return a + b; }, 0);
 
-  return "Eres IteraDORA, realizando un DIAGNÓSTICO PROFUNDO de madurez DevOps nivel " + level + ".\n\n" +
+  var base = "Eres IteraDORA, realizando un DIAGNÓSTICO PROFUNDO de madurez DevOps nivel " + level + ".\n\n" +
     "IMPORTANTE: El diagnóstico general YA TERMINÓ. Esto es el DIAGNÓSTICO PROFUNDO.\n" +
     "El usuario es nivel " + level + ". IGNORA mensajes anteriores. PROHIBIDO usar 'Pregunta X de 11'. Solo formato [CAT].\n\n" +
     "Haz preguntas de Sí/No sobre prácticas DevOps específicas para este nivel, organizadas por categoría.\n" +
@@ -103,9 +111,6 @@ function buildDeepDiagnosticPrompt(level) {
     "Las estrategias de branching definen cómo el equipo organiza y gestiona las ramas del repositorio.\n\n" +
     "¿El equipo utiliza trunk-based development o GitFlow con short-lived branches?\n\n" +
     "REGLAS:\n" +
-    "- EMPIEZA INMEDIATAMENTE con la primera pregunta. No introducciones ni resúmenes.\n" +
-    "- MUESTRA UNA SOLA PREGUNTA. No listes ni adelantes categorías.\n" +
-    "- USA el formato [CAT] al inicio de cada pregunta\n" +
     "- Cuando el usuario responda Sí o No, confirma (1 línea) y siguiente pregunta\n" +
     "- NO des recomendaciones ni análisis hasta completar TODAS las preguntas\n" +
     "- NO termines la pregunta con ¿Sí o No? ni frases similares. La pregunta debe ser natural.\n" +
@@ -123,6 +128,17 @@ function buildDeepDiagnosticPrompt(level) {
     "IC: [aciertos]/" + cats.IC + " ([porcentaje]%)\n\n" +
     "No agregues recomendaciones ni análisis después del bloque de resultados. Solo el bloque.\n\n" +
     "Si el usuario escribe algo que no es Sí o No, responde: \"Por favor, responde Sí o No a la pregunta actual.\"";
+
+  // ── Instrucción dinámica según conteo REAL de respuestas ──
+  if (respuestasCount >= totalPracticas) {
+    base += "\n\n⚠️ INSTRUCCIÓN FINAL: El backend confirma que ya se respondieron las " + totalPracticas + " prácticas. Muestra ÚNICAMENTE el bloque === RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===. PROHIBIDO hacer más preguntas.";
+  } else if (respuestasCount === 0) {
+    base += "\n\n⚠️ INSTRUCCIÓN: El backend confirma que este es el INICIO del diagnóstico profundo. Empieza INMEDIATAMENTE con la Pregunta 1 de " + totalPracticas + " [CV]. Sin introducciones.";
+  } else {
+    base += "\n\n⚠️ INSTRUCCIÓN OBLIGATORIA: El backend confirma que se han respondido " + respuestasCount + " de " + totalPracticas + " prácticas. Ahora debes mostrar ÚNICAMENTE la Pregunta " + (respuestasCount + 1) + " de " + totalPracticas + ". Sigue el orden CV → BD → EC → AP → IS → IC. NO te saltes preguntas. NO muestres resultados hasta completar las " + totalPracticas + ".";
+  }
+
+  return base;
 }
 
 function validarMensaje(messages) {
@@ -131,6 +147,20 @@ function validarMensaje(messages) {
   var ultimo = userMessages[userMessages.length - 1].content.trim();
   if (RESPUESTAS_VALIDAS.indexOf(ultimo) !== -1) return null;
   return "Responde Sí o No a la pregunta actual, por favor. Usa los botones disponibles.";
+}
+
+function contarRespuestas(messages) {
+  var validas = ["Sí", "No", "Si", "si", "no", "sí", "SÍ", "NO"];
+  var count = 0;
+  for (var i = 0; i < messages.length; i++) {
+    var m = messages[i];
+    if (m.role !== "user") continue;
+    var content = m.content.trim();
+    if (validas.indexOf(content) !== -1) {
+      count++;
+    }
+  }
+  return count;
 }
 
 // ─── BEDROCK (CLAUDE) ───
@@ -220,20 +250,26 @@ exports.handler = async function (event) {
     // ── Detectar modo diagnóstico profundo ──
     var isDeepDiagnostic = false;
     var deepLevel = "";
-    var originalMessages = messages;
 
     var lastMsg = messages.length > 0 ? (messages[messages.length - 1].content || "") : "";
     var deepMatch = lastMsg.match(/^\[DEEP:(\w+)\]:/);
     if (deepMatch) {
       isDeepDiagnostic = true;
       deepLevel = deepMatch[1];
-      var cleanContent = lastMsg.substring(deepMatch[0].length).trim();
-      if (!cleanContent || cleanContent.toUpperCase() === "INICIAR" || cleanContent.toUpperCase() === "INICIAR DIAGNÓSTICO" || cleanContent.toUpperCase() === "INICIAR DIAGNOSTICO") {
-        cleanContent = "Quiero iniciar el diagnostico profundo de nivel " + deepLevel;
-      }
-      // Reconstruir mensajes sin el prefijo
+      // Limpiar TODOS los mensajes del usuario con prefijo [DEEP:...], no solo el último
       messages = JSON.parse(JSON.stringify(messages));
-      messages[messages.length - 1].content = cleanContent;
+      for (var di = 0; di < messages.length; di++) {
+        if (messages[di].role === "user") {
+          var dm = messages[di].content.match(/^\[DEEP:\w+\]:(.*)/);
+          if (dm) {
+            var clean = dm[1].trim();
+            if (!clean || clean.toUpperCase() === "INICIAR" || clean.toUpperCase() === "INICIAR DIAGNÓSTICO" || clean.toUpperCase() === "INICIAR DIAGNOSTICO") {
+              clean = "Quiero iniciar el diagnostico profundo de nivel " + deepLevel;
+            }
+            messages[di].content = clean;
+          }
+        }
+      }
     }
 
     // Off-topic se bloquea sin llamar a la IA (solo en modo general)
@@ -248,7 +284,8 @@ exports.handler = async function (event) {
       return respond(503, { error: "No hay motor de IA configurado", hint: "Configura OLLAMA_URL o asegura que la Lambda tenga permisos para Bedrock." });
     }
 
-    var systemPrompt = isDeepDiagnostic ? buildDeepDiagnosticPrompt(deepLevel) : buildSystemPrompt();
+    var respuestasCount = contarRespuestas(messages);
+    var systemPrompt = isDeepDiagnostic ? buildDeepDiagnosticPrompt(deepLevel, respuestasCount) : buildSystemPrompt(respuestasCount);
     var aiMessages = [{ role: "system", content: systemPrompt }].concat(messages);
     var content = await callAI(aiMessages);
 

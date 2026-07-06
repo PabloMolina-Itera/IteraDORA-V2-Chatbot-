@@ -99,87 +99,41 @@ Por último, revisemos las prácticas de validación en producción.
 
 const TOTAL = PREGUNTAS.length;
 
-function buildSystemPrompt(): string {
-  return `Eres IteraDORA, un asistente amigable que realiza diagnósticos DevOps usando la metodología DORA. Responde en español, con un tono profesional pero cálido y natural.
+function buildSystemPrompt(respuestasCount: number = 0): string {
+  let base = `Eres IteraDORA, un asistente amigable que realiza diagnósticos DevOps usando la metodología DORA. Responde en español, con un tono profesional pero cálido y natural.
 
 REGLAS DE ORO:
 1. NUNCA mezcles una pregunta con el resultado final. Son pasos separados.
 2. Cuando presentas una pregunta, SOLO muestras esa pregunta. Nada más.
 3. El resultado SOLO se muestra después de que el usuario haya respondido la Pregunta 11 con Sí o No.
-4. Cada respuesta tuya contiene ÚNICAMENTE una cosa: o un mensaje de ánimo + siguiente pregunta, o el resultado final, o recomendaciones. Nunca combines dos de estas cosas.
+4. Cada respuesta tuya contiene ÚNICAMENTE una cosa: o un mensaje de ánimo + siguiente pregunta, o el resultado final, o recomendaciones.
 
-CONTEXTO: La presentación y la Pregunta 1 ya fueron mostradas al usuario. El usuario está respondiendo Sí o No a la Pregunta 1. Tu trabajo es continuar desde ahí.
+CONTEXTO: La presentación y la Pregunta 1 ya fueron mostradas al usuario.
 
-FLUJO NORMAL (Preguntas 2 a 11):
-Cuando el usuario responda Sí o No, responde con esto y solo esto:
-
-1. Un mensaje de ánimo (1 línea), varíalo:
-- "Excelente, sigamos evaluando."
-- "Perfecto, continuemos."
-- "Muy bien, vamos por más."
-- "Gracias, avancemos."
-- "Entendido, sigamos adelante."
-- "¡Qué bien! Continuemos."
-
-2. Una línea en blanco.
-
-3. La siguiente pregunta en este formato:
-"Pregunta X de ${TOTAL}:
-
-[contenido exacto de la pregunta]"
-
-Ejemplo de respuesta para la Pregunta 2:
-"Excelente, sigamos evaluando.
-
-Pregunta 2 de ${TOTAL}:
-
-Tema: Infraestructura como Código
-
-La automatización de la infraestructura ayuda a reducir errores manuales y mejorar la consistencia entre entornos.
-
-¿La Infraestructura como Código (IaC) se utiliza como estándar en su organización?"
-
-IMPORTANTE: No agregues nada después de la pregunta. No menciones resultados. Solo la pregunta.
-
-Las preguntas son (las presentas en orden, de 2 a 11):
+Las preguntas de referencia son:
 ${PREGUNTAS.map((texto, i) => `Pregunta ${i + 1} de ${TOTAL}:\n${texto}`).join("\n\n")}
 
-SOLO DESPUÉS de que el usuario responda la Pregunta 11, respondes ÚNICAMENTE con esto:
-"¡Terminamos! Aquí están tus resultados.
-
-RESULTADO DEL DIAGNÓSTICO:
-Nivel: [Fundacional, Intermedio o Avanzado]
-Puntaje: [calculado automáticamente]
-Rangos: 0-33% Fundacional, 34-66% Intermedio, 67-100% Avanzado.
-
-¿Te gustaría recibir recomendaciones personalizadas?"
-
-No agregues nada más al resultado. No incluyas una pregunta adicional.
-
-Cuando el usuario pida recomendaciones, entrega un análisis general dividido en secciones. No repitas las preguntas ni digas "en la pregunta X fallaste". Resume por áreas temáticas. Usa este formato:
-
-"Basado en tus respuestas, aquí tienes un panorama de tu madurez DevOps:
-
-FORTALEZAS
-• [Menciona de forma general las áreas donde respondieron Sí, agrupando por temas. Sé alentador.]
-
-OPORTUNIDADES DE MEJORA
-• [Menciona las áreas donde respondieron No, agrupadas por temas como: control de versiones, automatización, calidad, seguridad, observabilidad. Da sugerencias generales, no por pregunta.]
-
-CONCLUSIÓN
-[Un párrafo breve que resuma el nivel de madurez general, reconociendo lo que ya hacen bien y motivando a trabajar en las oportunidades detectadas. Sin juicios negativos, siempre en tono constructivo.]
-
-Gracias por confiar en IteraDORA. ¡Sigue mejorando tus prácticas DevOps!"
-
-IMPORTANTE: No uses frases como "Fallaste en la pregunta 3" o "Respondiste No a...". Agrupa siempre por temas. Humaniza el mensaje para que el usuario sienta que es un acompañamiento, no una evaluación."
+Cuando el usuario pida recomendaciones, entrega un análisis con FORTALEZAS, OPORTUNIDADES DE MEJORA y CONCLUSIÓN. Agrupa por áreas temáticas. No uses frases como "Fallaste en la pregunta 3".
 
 Si el usuario escribe algo que no es Sí o No, responde: "Responde Sí o No a la pregunta actual, por favor."`;
+
+  // ── Instrucción dinámica según conteo REAL de respuestas ──
+  if (respuestasCount >= TOTAL) {
+    base += `\n\n⚠️ INSTRUCCIÓN FINAL: El usuario ya respondió las ${TOTAL} preguntas. Muestra el RESULTADO o RECOMENDACIONES según el último mensaje del usuario. PROHIBIDO inventar más preguntas.`;
+  } else if (respuestasCount > 0) {
+    const idx = respuestasCount; // índice de la PRÓXIMA pregunta (0-based)
+    if (idx < PREGUNTAS.length) {
+      base += `\n\n⚠️ INSTRUCCIÓN OBLIGATORIA: El backend confirma que el usuario respondió la Pregunta ${respuestasCount}. Muestra ÚNICAMENTE esto:\n\n[1 línea de ánimo]\n\nPregunta ${respuestasCount + 1} de ${TOTAL}:\n\n${PREGUNTAS[idx]}\n\nNO muestres otra pregunta distinta. NO te saltes preguntas. NO muestres resultados aún.`;
+    }
+  }
+
+  return base;
 }
 
 const RESPUESTAS_VALIDAS = ["Sí", "No", "Quiero recomendaciones", "Si", "si", "no"];
 
 // ─── DEEP DIAGNOSTIC PROMPT ───
-function buildDeepDiagnosticPrompt(level: string): string {
+function buildDeepDiagnosticPrompt(level: string, respuestasCount: number = 0): string {
   const practices: Record<string, Record<string, number>> = {
     Fundacional:  { CV: 1, BD: 2, EC: 3, AP: 5, IS: 6, IC: 2 },
     Intermedio:   { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
@@ -193,7 +147,7 @@ function buildDeepDiagnosticPrompt(level: string): string {
   };
   const totalPracticas = Object.values(cats).reduce((a: number, b: number) => a + b, 0);
 
-  return `Eres IteraDORA, realizando un DIAGNÓSTICO PROFUNDO de madurez DevOps nivel ${level}.
+  let base = `Eres IteraDORA, realizando un DIAGNÓSTICO PROFUNDO de madurez DevOps nivel ${level}.
 
 IMPORTANTE: El diagnóstico general de 11 preguntas YA TERMINÓ. Esto es el DIAGNÓSTICO PROFUNDO.
 El usuario es nivel ${level}. IGNORA mensajes anteriores. PROHIBIDO usar 'Pregunta X de 11'. Solo formato [CAT].
@@ -222,23 +176,11 @@ Tema: [título corto y descriptivo de la práctica]
 
 Donde [XX] es el código REAL de categoría (CV, BD, EC, AP, IS, IC). NO uses [CAT] literal.
 X = número secuencial global, de 1 hasta ${totalPracticas}. NO reinicies el conteo por categoría.
-Ejemplo (primera pregunta del diagnóstico):
-[CV] Pregunta 1 de ${totalPracticas}:
-
-Tema: Estrategia de Branching
-
-Las estrategias de branching definen cómo el equipo organiza y gestiona las ramas del repositorio para facilitar la colaboración.
-
-¿El equipo utiliza trunk-based development o GitFlow con short-lived branches?
 
 REGLAS:
-- EMPIEZA INMEDIATAMENTE con la primera pregunta. No des introducciones ni resúmenes.
-- MUESTRA UNA SOLA PREGUNTA. No listes ni adelantes categorías.
-- USA el formato [CAT] al inicio de cada pregunta
 - Cuando el usuario responda Sí o No, confirma (1 línea) y siguiente pregunta
 - NO des recomendaciones ni análisis hasta completar TODAS las preguntas
-- NO termines la pregunta con \"¿Sí o No?\" ni frases similares. La pregunta debe ser natural.
-- Preguntas ESPECÍFICAS y RELEVANTES para nivel ${level}
+- Preguntas ESPECÍFICAS para nivel ${level}
 - Para nivel Fundacional: pregunta sobre prácticas básicas (repositorios, primeros pipelines, documentación)
 - Para nivel Intermedio: pregunta sobre automatización, CI/CD, testing automatizado, monitoreo
 - Para nivel Avanzado: pregunta sobre canary releases, feature flags, SLOs, chaos engineering, DevSecOps
@@ -256,6 +198,17 @@ IC: [aciertos]/${cats.IC} ([porcentaje]%)
 No agregues recomendaciones ni análisis después del bloque de resultados. Solo el bloque.
 
 Si el usuario escribe algo que no es Sí o No, responde: "Por favor, responde Sí o No a la pregunta actual."`;
+
+  // ── Instrucción dinámica según conteo REAL de respuestas ──
+  if (respuestasCount >= totalPracticas) {
+    base += `\n\n⚠️ INSTRUCCIÓN FINAL: El backend confirma que ya se respondieron las ${totalPracticas} prácticas. Muestra ÚNICAMENTE el bloque === RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===. PROHIBIDO hacer más preguntas.`;
+  } else if (respuestasCount === 0) {
+    base += `\n\n⚠️ INSTRUCCIÓN: El backend confirma que este es el INICIO del diagnóstico profundo. Empieza INMEDIATAMENTE con la Pregunta 1 de ${totalPracticas} [CV]. Sin introducciones.`;
+  } else {
+    base += `\n\n⚠️ INSTRUCCIÓN OBLIGATORIA: El backend confirma que se han respondido ${respuestasCount} de ${totalPracticas} prácticas. Ahora debes mostrar ÚNICAMENTE la Pregunta ${respuestasCount + 1} de ${totalPracticas}. Sigue el orden CV → BD → EC → AP → IS → IC. NO te saltes preguntas. NO muestres resultados hasta completar las ${totalPracticas}.`;
+  }
+
+  return base;
 }
 
 function validarMensaje(messages: { role: string; content: string }[]): string | null {
@@ -268,6 +221,19 @@ function validarMensaje(messages: { role: string; content: string }[]): string |
 
   // Bloqueado
   return "Responde Si o No a la pregunta actual, por favor. Usa los botones disponibles.";
+}
+
+function contarRespuestas(messages: { role: string; content: string }[]): number {
+  const validas = ["Sí", "No", "Si", "si", "no", "sí", "SÍ", "NO"];
+  let count = 0;
+  for (const m of messages) {
+    if (m.role !== "user") continue;
+    const content = m.content.trim();
+    if (validas.includes(content)) {
+      count++;
+    }
+  }
+  return count;
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -283,12 +249,22 @@ export const POST: APIRoute = async ({ request }) => {
     if (deepMatch) {
       isDeepDiagnostic = true;
       deepLevel = deepMatch[1];
-      let cleanContent = lastMsg.substring(deepMatch[0].length).trim();
-      if (!cleanContent || cleanContent.toUpperCase() === "INICIAR" || cleanContent.toUpperCase() === "INICIAR DIAGNÓSTICO" || cleanContent.toUpperCase() === "INICIAR DIAGNOSTICO") {
-        cleanContent = "Quiero iniciar el diagnóstico profundo de nivel " + deepLevel;
+      // Limpiar TODOS los mensajes del usuario con prefijo [DEEP:...], no solo el último
+      for (let di = 0; di < messages.length; di++) {
+        if (messages[di].role === "user") {
+          const dm = messages[di].content.match(/^\[DEEP:\w+\]:(.*)/);
+          if (dm) {
+            let clean = dm[1].trim();
+            if (!clean || clean.toUpperCase() === "INICIAR" || clean.toUpperCase() === "INICIAR DIAGNÓSTICO" || clean.toUpperCase() === "INICIAR DIAGNOSTICO") {
+              clean = "Quiero iniciar el diagnóstico profundo de nivel " + deepLevel;
+            }
+            messages[di].content = clean;
+          }
+        }
       }
-      messages[messages.length - 1].content = cleanContent;
     }
+
+    const respuestasCount = contarRespuestas(messages);
 
     // Filtrar mensajes off-topic ANTES de llamar a Ollama (solo en modo general)
     if (!isDeepDiagnostic) {
@@ -301,7 +277,7 @@ export const POST: APIRoute = async ({ request }) => {
       }
     }
 
-    const systemPrompt = isDeepDiagnostic ? buildDeepDiagnosticPrompt(deepLevel) : buildSystemPrompt();
+    const systemPrompt = isDeepDiagnostic ? buildDeepDiagnosticPrompt(deepLevel, respuestasCount) : buildSystemPrompt(respuestasCount);
     const ollamaMessages = [
       { role: "system", content: systemPrompt },
       ...messages,
