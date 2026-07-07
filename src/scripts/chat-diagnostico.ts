@@ -174,7 +174,7 @@ function initChatDiagnostico() {
 
   // ─── PARSERS DIAGNÓSTICO PROFUNDO ───
   function esPreguntaProfunda(content: string): boolean {
-    return /^\[(CV|BD|EC|AP|IS|IC)\]\s+Pregunta \d+ de \d+/im.test(content);
+    return /\[(CV|BD|EC|AP|IS|IC)\]\s+Pregunta \d+ de \d+/im.test(content);
   }
 
   function extraerCategoria(content: string): string {
@@ -278,7 +278,8 @@ function initChatDiagnostico() {
   }
 
   function esResultado(content: string): boolean {
-    return content.includes("RESULTADO DEL DIAGN") && content.includes("Nivel:");
+    const upper = content.toUpperCase();
+    return upper.includes("RESULTADO DEL DIAGN") && (upper.includes("NIVEL:") || upper.includes("NIVEL "));
   }
 
   function splitResultado(content: string): string[] {
@@ -325,7 +326,7 @@ function initChatDiagnostico() {
         deepRespuestasPorCategoria[deepUltimaCategoria] = (deepRespuestasPorCategoria[deepUltimaCategoria] || 0) + 1;
       }
     } else {
-      if (content === "Sí") respuestasSi++;
+      if (content.toUpperCase() === "SÍ" || content.toUpperCase() === "SI") respuestasSi++;
     }
 
     // Mostrar mensaje limpio al usuario (sin prefijo técnico)
