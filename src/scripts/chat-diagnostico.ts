@@ -25,12 +25,11 @@ function initChatDiagnostico() {
   const TOTAL_PREGUNTAS = 11;
   const btnComenzar = document.getElementById("btn-comenzar") as HTMLButtonElement;
 
+  type DiagnosticState = "idle" | "inProgress" | "completed";
+  let state: DiagnosticState = "idle";
   let messages: { role: string; content: string }[] = [];
   let isLoading = false;
-  let diagnosticoFinalizado = false;
-  let botonesVisibles = false;
   let resultadoMostrado = false;
-  let chatTerminado = false;
   let respuestasSi = 0;
 
   // ─── DIAGNÓSTICO PROFUNDO ───
@@ -44,10 +43,9 @@ function initChatDiagnostico() {
     Avanzado:    { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
   };
 
-  // Los botones Sí/No y Pregunta 1 están ocultos hasta que se pulse "Comencemos"
+  // Los botones Sí/No están ocultos hasta que se pulse "Comencemos"
   btnSi.disabled = true;
   btnNo.disabled = true;
-  botonesVisibles = false;
 
   const comenzarContainer = document.getElementById("comenzar-container")!;
 
@@ -68,7 +66,7 @@ function initChatDiagnostico() {
       btnContainer.classList.remove("hidden");
       btnSi.disabled = false;
       btnNo.disabled = false;
-      botonesVisibles = true;
+      state = "inProgress";
       scrollToBottom();
     } catch (e) {
       btnComenzar.disabled = false;
@@ -254,7 +252,6 @@ function initChatDiagnostico() {
       btnContainer.classList.remove("hidden");
       btnSi.disabled = false;
       btnNo.disabled = false;
-      botonesVisibles = true;
     } else {
       btnContainer.classList.add("hidden");
       recContainer.classList.add("hidden");
@@ -263,7 +260,6 @@ function initChatDiagnostico() {
       btnNo.disabled = true;
       btnRec.disabled = true;
       btnDeep.disabled = true;
-      botonesVisibles = false;
     }
   }
 
@@ -273,18 +269,16 @@ function initChatDiagnostico() {
     deepContainer.classList.remove("hidden");
     btnRec.disabled = false;
     btnDeep.disabled = false;
-    botonesVisibles = true;
   }
 
   function showRecButton() {
     btnContainer.classList.add("hidden");
     recContainer.classList.remove("hidden");
     btnRec.disabled = false;
-    botonesVisibles = true;
   }
 
   function setButtonsLoading(loading: boolean) {
-    if (!botonesVisibles) return;
+    if (state === "completed") return;
     btnSi.disabled = loading;
     btnNo.disabled = loading;
     btnRec.disabled = loading;
@@ -466,7 +460,7 @@ function initChatDiagnostico() {
 
   async function sendMessage(respuesta: string) {
     const content = respuesta;
-    if (!content || isLoading || chatTerminado) return;
+    if (!content || isLoading || state === "completed") return;
 
     // ── Contar Sí ──
     if (deepDiagnosticActive) {
@@ -515,8 +509,7 @@ function initChatDiagnostico() {
           addMessage("assistant", "✅ Diagnóstico profundo completado.");
           await delay(500);
           showDeepResultCard(fullReply);
-          chatTerminado = true;
-          diagnosticoFinalizado = true;
+          state = "completed";
           showButtons(false);
           // Ocultar todos los botones de acción, solo volver al inicio
           recContainer.classList.add("hidden");
@@ -564,7 +557,7 @@ function initChatDiagnostico() {
         const dashboard = renderDashboard(fullReply);
         messagesEl.appendChild(dashboard);
         scrollToBottom();
-        diagnosticoFinalizado = true;
+        state = "completed";
         // Ocultar Recomendaciones, mostrar solo Diagnóstico Profundo
         recContainer.classList.add("hidden");
         btnRec.disabled = true;
@@ -582,7 +575,7 @@ function initChatDiagnostico() {
       );
     } finally {
       isLoading = false;
-      if (!diagnosticoFinalizado) setButtonsLoading(false);
+      if (state !== "completed") setButtonsLoading(false);
     }
   }
 
@@ -615,8 +608,7 @@ function initChatDiagnostico() {
 
     // Limpiar historial para que la IA empiece fresca el diagnóstico profundo
     messages = [];
-    chatTerminado = false;
-    diagnosticoFinalizado = false;
+    state = "inProgress";
     resultadoMostrado = false;
 
     addMessage("assistant", "Iniciando diagnóstico profundo nivel " + deepDiagnosticLevel + "...");
@@ -624,7 +616,7 @@ function initChatDiagnostico() {
   });
 
   btnVolverChat.addEventListener("click", () => {
-    if (chatTerminado) return;
+    if (state === "completed") return;
     resultCard.classList.add("hidden");
     deepResultCard.classList.add("hidden");
     chatDisclaimer.classList.remove("hidden");
@@ -636,7 +628,7 @@ function initChatDiagnostico() {
   });
 
   btnVolverDeep.addEventListener("click", () => {
-    if (chatTerminado) return;
+    if (state === "completed") return;
     deepResultCard.classList.add("hidden");
     chatDisclaimer.classList.remove("hidden");
     messagesEl.scrollIntoView({ behavior: "smooth" });
