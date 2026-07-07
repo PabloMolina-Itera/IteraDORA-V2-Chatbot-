@@ -1,3 +1,5 @@
+import { marked } from "marked";
+
 function initChatDiagnostico() {
   // Backend: endpoint de Astro SSR con Bedrock Claude integrado
   const API_URL = "/api/chat";
@@ -84,6 +86,136 @@ function initChatDiagnostico() {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  function renderDashboard(markdown: string): HTMLElement {
+    const container = document.createElement("div");
+    container.className = "dashboard-recomendaciones";
+
+    // Parsear secciones: FORTALEZAS, OPORTUNIDADES, CONCLUSIÓN
+    const sections = parseSecciones(markdown);
+
+    // Encabezado del dashboard
+    const header = document.createElement("div");
+    header.className = "dashboard-header";
+    header.innerHTML = '<div class="dashboard-icon">📊</div><div><h3>Informe de Diagnóstico</h3><p>Análisis detallado de madurez DevOps</p></div>';
+    container.appendChild(header);
+
+    // Fortalezas
+    if (sections.fortalezas) {
+      const sec = document.createElement("div");
+      sec.className = "dashboard-section";
+      sec.innerHTML = '<h4 class="section-title fortalezas"><span class="section-icon">✓</span> Fortalezas Identificadas</h4>';
+      const body = document.createElement("div");
+      body.className = "section-body";
+      body.innerHTML = marked.parse(sections.fortalezas) as string;
+      // Convertir cada <li> en una card
+      body.querySelectorAll("li").forEach((li) => {
+        li.className = "dashboard-card card-fortaleza";
+      });
+      sec.appendChild(body);
+      container.appendChild(sec);
+    }
+
+    // Oportunidades
+    if (sections.oportunidades) {
+      const sec = document.createElement("div");
+      sec.className = "dashboard-section";
+      sec.innerHTML = '<h4 class="section-title oportunidades"><span class="section-icon">⚡</span> Oportunidades de Mejora</h4>';
+      const body = document.createElement("div");
+      body.className = "section-body";
+      body.innerHTML = marked.parse(sections.oportunidades) as string;
+      body.querySelectorAll("li").forEach((li, i) => {
+        li.className = "dashboard-card card-oportunidad";
+        // Prioridad según orden
+      });
+      sec.appendChild(body);
+      container.appendChild(sec);
+    }
+
+    // Conclusión
+    if (sections.conclusion) {
+      const sec = document.createElement("div");
+      sec.className = "dashboard-section conclusion-section";
+      sec.innerHTML = '<h4 class="section-title conclusion"><span class="section-icon">💡</span> Conclusión y Próximos Pasos</h4>';
+      const body = document.createElement("div");
+      body.className = "section-body conclusion-body";
+      body.innerHTML = marked.parse(sections.conclusion) as string;
+      sec.appendChild(body);
+      container.appendChild(sec);
+    }
+
+    return container;
+  }
+
+  function parseSecciones(md: string): { fortalezas: string; oportunidades: string; conclusion: string } {
+    let fortalezas = "";
+    let oportunidades = "";
+    let conclusion = "";
+
+    // Normalizar: quitar ** de encabezados
+    let text = md.replace(/\*\*(FORTALEZAS?|OPORTUNIDADES?\s*(DE\s*MEJORA)?|CONCLUSI[ÓO]N|RECOMENDACIONES?)\*\*/gi, "### $1");
+    text = text.replace(/^#+\s*(FORTALEZAS?|OPORTUNIDADES?\s*(DE\s*MEJORA)?|CONCLUSI[ÓO]N|RECOMENDACIONES?)/gim, "### $1");
+
+    // Separar por ### encabezados
+    const parts = text.split(/^###\s+/gim);
+    let currentSection = "";
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i].trim();
+      if (!part) continue;
+
+      const lines = part.split("\n");
+      const firstLine = lines[0].toUpperCase().trim();
+
+      if (firstLine.includes("FORTALEZA")) {
+        currentSection = "fortalezas";
+        fortalezas = lines.slice(1).join("\n").trim();
+      } else if (firstLine.includes("OPORTUNIDAD") || firstLine.includes("MEJORA")) {
+        currentSection = "oportunidades";
+        oportunidades = lines.slice(1).join("\n").trim();
+      } else if (firstLine.includes("CONCLUSI")) {
+        currentSection = "conclusion";
+        conclusion = lines.slice(1).join("\n").trim();
+      } else if (currentSection === "fortalezas") {
+        fortalezas += "\n" + part;
+      } else if (currentSection === "oportunidades") {
+        oportunidades += "\n" + part;
+      } else if (currentSection === "conclusion") {
+        conclusion += "\n" + part;
+      }
+    }
+
+    // Si no se detectaron secciones, dividir por patrones alternativos
+    if (!fortalezas && !oportunidades) {
+      // Intentar split por líneas ALL CAPS
+      const altParts = text.split(/^([A-ZÁÉÍÓÚÑ\s]{5,})$/gim);
+      let altSection = "";
+      for (let i = 0; i < altParts.length; i++) {
+        const p = altParts[i].trim();
+        if (!p) continue;
+        if (/^[A-ZÁÉÍÓÚÑ\s]{5,}$/.test(p)) {
+          const upper = p.toUpperCase();
+          if (upper.includes("FORTALEZA")) altSection = "fortalezas";
+          else if (upper.includes("OPORTUNIDAD") || upper.includes("MEJORA")) altSection = "oportunidades";
+          else if (upper.includes("CONCLUSI")) altSection = "conclusion";
+          else altSection = "";
+        } else if (altSection === "fortalezas") fortalezas += p + "\n";
+        else if (altSection === "oportunidades") oportunidades += p + "\n";
+        else if (altSection === "conclusion") conclusion += p + "\n";
+      }
+    }
+
+    // Si sigue sin detectar, usar todo como conclusión
+    if (!fortalezas && !oportunidades && !conclusion) {
+      conclusion = md;
+    }
+
+    return {
+      fortalezas: fortalezas.trim(),
+      oportunidades: oportunidades.trim(),
+      conclusion: conclusion.trim(),
+    };
   }
 
   function addMessage(role: "user" | "assistant", content: string) {
@@ -424,15 +556,10 @@ function initChatDiagnostico() {
         showRecButton();
         messages.push({ role: "assistant", content: fullReply });
       } else if (resultadoMostrado) {
-        const goodbyeMatch = fullReply.match(/(Gracias por confiar[^]*)$/i);
-        if (goodbyeMatch) {
-          const recText = fullReply.substring(0, fullReply.indexOf(goodbyeMatch[1])).trim();
-          const goodbyeText = goodbyeMatch[1].trim();
-          if (recText) addMessage("assistant", recText);
-          addMessage("assistant", goodbyeText);
-        } else {
-          addMessage("assistant", fullReply);
-        }
+        // Renderizar recomendaciones como dashboard profesional
+        const dashboard = renderDashboard(fullReply);
+        messagesEl.appendChild(dashboard);
+        scrollToBottom();
         diagnosticoFinalizado = true;
         // Ocultar Recomendaciones, mostrar solo Diagnóstico Profundo
         recContainer.classList.add("hidden");
