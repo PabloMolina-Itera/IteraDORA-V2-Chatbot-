@@ -345,23 +345,92 @@ function initChatDiagnostico() {
     return resultados;
   }
 
-  function showDeepResultCard(resultados: Record<string, string>) {
-    const catNames: Record<string, string> = {
-      CV: "Control de Versiones",
-      BD: "Build & Deploy",
-      EC: "Código y Estándares",
-      AP: "Automatización de Pruebas",
-      IS: "Seguridad",
-      IC: "Integración Continua"
+  function renderDeepDashboard(markdown: string) {
+    const resultados = parsearResultadosProfundos(markdown);
+    const dashboard = document.createElement("div");
+    dashboard.className = "deep-dashboard";
+
+    // ─── Encabezado ───
+    const header = document.createElement("div");
+    header.className = "deep-header";
+    header.innerHTML = '<div class="deep-header-icon">◆</div><div><h3>Resultados del Diagnóstico Profundo</h3><p>Análisis detallado por categoría DORA</p></div>';
+    dashboard.appendChild(header);
+
+    // ─── Métricas ───
+    const metricsGrid = document.createElement("div");
+    metricsGrid.className = "deep-metrics-grid";
+
+    const catConfig: Record<string, { name: string; icon: string }> = {
+      CV: { name: "Control de Versiones", icon: "🔀" },
+      BD: { name: "Build & Deployment", icon: "⚙️" },
+      EC: { name: "Estándares de Código", icon: "📋" },
+      AP: { name: "Automatización de Pruebas", icon: "🧪" },
+      IS: { name: "Ingeniería de Seguridad", icon: "🔒" },
+      IC: { name: "Integración Continua", icon: "🔄" },
     };
     const categories = ["CV", "BD", "EC", "AP", "IS", "IC"];
-    let html = '<div class="flex flex-col gap-2 text-sm">';
+
     for (const cat of categories) {
-      const score = resultados[cat] || "0/0 (0%)";
-      html += '<div class="flex justify-between bg-[#F7FAFC] dark:bg-[#001C26] px-4 py-3 rounded-xl"><span class="text-gray-500 dark:text-gray-400">' + escapeHtml(catNames[cat] || cat) + '</span><span class="font-bold text-[#3E7CB5]">' + escapeHtml(score) + '</span></div>';
+      const scoreStr = resultados[cat] || "0/0 (0%)";
+      const match = scoreStr.match(/(\d+)\/(\d+)\s*\((\d+(?:\.\d+)?)%\)/);
+      const correct = match ? parseInt(match[1]) : 0;
+      const total = match ? parseInt(match[2]) : 1;
+      const pct = match ? parseFloat(match[3]) : 0;
+      const cfg = catConfig[cat] || { name: cat, icon: "📊" };
+
+      let colorClass = "deep-red";
+      if (pct >= 70) colorClass = "deep-green";
+      else if (pct >= 40) colorClass = "deep-amber";
+
+      const card = document.createElement("div");
+      card.className = "deep-metric-card";
+      card.innerHTML = `
+        <div class="deep-metric-top">
+          <span class="deep-metric-icon">${cfg.icon}</span>
+          <div class="deep-metric-info">
+            <span class="deep-metric-name">${escapeHtml(cfg.name)}</span>
+            <span class="deep-metric-tag">${cat}</span>
+          </div>
+          <span class="deep-metric-pct ${colorClass}">${pct.toFixed(0)}%</span>
+        </div>
+        <div class="deep-progress-bar">
+          <div class="deep-progress-fill ${colorClass}" style="width:${Math.min(100, pct)}%"></div>
+        </div>
+        <div class="deep-metric-score">${correct} de ${total} prácticas</div>`;
+      metricsGrid.appendChild(card);
     }
-    html += '</div>';
-    deepResultContent.innerHTML = html;
+    dashboard.appendChild(metricsGrid);
+
+    // ─── Análisis (si hay texto después del bloque de resultados) ───
+    const analysisText = markdown.split("=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===")[1] || "";
+    const linesAfter = analysisText.split("\n");
+    // Buscar líneas que no sean los scores (CV:, BD:, etc.)
+    const analysisLines: string[] = [];
+    let scoresDone = false;
+    for (const line of linesAfter) {
+      if (/^(CV|BD|EC|AP|IS|IC):\s*\d+\/\d+/.test(line.trim())) continue;
+      const trimmed = line.trim();
+      if (trimmed && !scoresDone) {
+        if (!/^\w{2}:/.test(trimmed)) scoresDone = true;
+      }
+      if (scoresDone && trimmed) analysisLines.push(trimmed);
+    }
+
+    if (analysisLines.length > 0) {
+      const analysisSec = document.createElement("div");
+      analysisSec.className = "deep-analysis";
+      const analysisText = analysisLines.join("\n");
+      analysisSec.innerHTML = '<h4>📊 Análisis Ejecutivo</h4><div class="deep-analysis-body">' + (marked.parse(analysisText) as string) + '</div>';
+      dashboard.appendChild(analysisSec);
+    }
+
+    return dashboard;
+  }
+
+  function showDeepResultCard(content: string) {
+    const dashboard = renderDeepDashboard(content);
+    deepResultContent.innerHTML = "";
+    deepResultContent.appendChild(dashboard);
     deepResultCard.classList.remove("hidden");
     chatDisclaimer.classList.add("hidden");
     deepResultCard.scrollIntoView({ behavior: "smooth" });
@@ -507,13 +576,16 @@ function initChatDiagnostico() {
         if (esResultadoProfundo(fullReply)) {
           deepDiagnosticoFinalizado = true;
           deepDiagnosticActive = false;
-          const resultados = parsearResultadosProfundos(fullReply);
-          addMessage("assistant", "Diagnóstico profundo completado. Estos son tus resultados por categoría:");
+          addMessage("assistant", "✅ Diagnóstico profundo completado.");
           await delay(500);
-          showDeepResultCard(resultados);
+          showDeepResultCard(fullReply);
           chatTerminado = true;
           diagnosticoFinalizado = true;
           showButtons(false);
+          // Ocultar todos los botones de acción, solo volver al inicio
+          recContainer.classList.add("hidden");
+          deepContainer.classList.add("hidden");
+          btnContainer.classList.add("hidden");
           messages.push({ role: "assistant", content: fullReply });
         } else if (esPreguntaProfunda(fullReply)) {
           deepUltimaCategoria = extraerCategoria(fullReply);
