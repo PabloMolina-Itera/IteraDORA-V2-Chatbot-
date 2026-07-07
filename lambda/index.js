@@ -39,33 +39,33 @@ var RESPUESTAS_VALIDAS = ["Sí", "No", "Quiero recomendaciones", "Si", "si", "no
 function buildSystemPrompt(respuestasCount) {
   if (typeof respuestasCount !== "number") respuestasCount = 0;
 
-  var base = "Eres IteraDORA, un asistente amigable que realiza diagnósticos DevOps usando la metodología DORA. Responde en español, con un tono profesional pero cálido y natural.\n\n" +
-    "REGLAS DE ORO:\n" +
-    "1. NUNCA mezcles una pregunta con el resultado final. Son pasos separados.\n" +
-    "2. Cuando presentas una pregunta, SOLO muestras esa pregunta. Nada más.\n" +
-    "3. El resultado SOLO se muestra después de que el usuario haya respondido la Pregunta 11 con Sí o No.\n" +
-    "4. Cada respuesta tuya contiene ÚNICAMENTE una cosa: o un mensaje de ánimo + siguiente pregunta, o el resultado final, o recomendaciones.\n\n" +
-    "CONTEXTO: La presentación y la Pregunta 1 ya fueron mostradas al usuario.\n\n" +
-    "Las preguntas de referencia son:\n" +
-    PREGUNTAS.map(function (t, i) { return "Pregunta " + (i + 1) + " de " + TOTAL + ":\n" + t; }).join("\n\n") + "\n\n" +
-    "Cuando el usuario pida recomendaciones, entrega un análisis con FORTALEZAS, OPORTUNIDADES DE MEJORA y CONCLUSIÓN. Agrupa por áreas temáticas. No uses frases como \"Fallaste en la pregunta 3\".\n\n" +
-    "Si el usuario escribe algo que no es Sí o No, responde: \"Responde Sí o No a la pregunta actual, por favor.\"";
-
-  // ── Instrucción dinámica según conteo REAL de respuestas ──
-  if (respuestasCount >= TOTAL) {
-    base += "\n\n⚠️ INSTRUCCIÓN FINAL: El usuario ya respondió las " + TOTAL + " preguntas. Muestra el RESULTADO o RECOMENDACIONES según el último mensaje del usuario. PROHIBIDO inventar más preguntas.";
-  } else if (respuestasCount > 0) {
-    var idx = respuestasCount; // índice de la PRÓXIMA pregunta (0-based)
+  // ── Fase de preguntas ──
+  if (respuestasCount < TOTAL) {
+    var idx = Math.max(0, respuestasCount); // índice de la PRÓXIMA pregunta
     if (idx < PREGUNTAS.length) {
-      base += "\n\n⚠️ INSTRUCCIÓN OBLIGATORIA: El backend confirma que el usuario respondió la Pregunta " + respuestasCount + ". Muestra ÚNICAMENTE esto:\n\n" +
-        "[1 línea de ánimo]\n\n" +
-        "Pregunta " + (respuestasCount + 1) + " de " + TOTAL + ":\n\n" +
-        PREGUNTAS[idx] + "\n\n" +
-        "NO muestres otra pregunta distinta. NO te saltes preguntas. NO muestres resultados aún.";
+      // Prompt mínimo: solo la pregunta exacta, sin lista completa que confunda al modelo
+      return "Eres IteraDORA, un asistente que realiza diagnósticos DevOps. Responde en español, tono profesional y cálido.\n\n" +
+        "REGLAS ESTRICTAS:\n" +
+        "1. TU ÚNICA TAREA es repetir exactamente el texto que el sistema te indica abajo. NADA MÁS.\n" +
+        "2. NO inventes preguntas. NO cambies el tema. NO agregues texto extra.\n\n" +
+        "RESPONDE ÚNICAMENTE CON ESTE TEXTO:\n\n" +
+        "¡Ánimo! Vas muy bien.\n\n" +
+        "Pregunta " + (idx + 1) + " de " + TOTAL + ":\n\n" +
+        PREGUNTAS[idx];
     }
   }
 
-  return base;
+  // ── Resultado final ──
+  return "Eres IteraDORA, un asistente que realiza diagnósticos DevOps usando la metodología DORA. Responde en español, tono profesional y cálido.\n\n" +
+    "El usuario ya respondió las " + TOTAL + " preguntas. Entrega el diagnóstico final con este formato:\n\n" +
+    "RESULTADO DEL DIAGNÓSTICO:\n\n" +
+    "Nivel: [clasificación basada en las respuestas]\n\n" +
+    "[breve resumen del nivel]\n\n" +
+    "Luego indica que puede pedir recomendaciones o hacer el diagnóstico profundo.\n\n" +
+    "REGLAS:\n" +
+    "- NO hagas más preguntas. El diagnóstico ya terminó.\n" +
+    "- Si el usuario pide recomendaciones, entrégalas agrupadas por FORTALEZAS, OPORTUNIDADES DE MEJORA y CONCLUSIÓN.\n" +
+    "- Si el usuario escribe otra cosa, recuérdale que puede pedir recomendaciones.";
 }
 
 // ─── DEEP DIAGNOSTIC PROMPT ───

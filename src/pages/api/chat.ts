@@ -1,10 +1,51 @@
 import type { APIRoute } from "astro";
+import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 
 export const prerender = false;
 
-const OLLAMA_URL = "http://127.0.0.1:11434/api/chat";
+// ─── Configuración de motores de IA ───
+const OLLAMA_URL = import.meta.env.OLLAMA_URL || "";
 const OLLAMA_MODEL = import.meta.env.OLLAMA_MODEL || "llama3.2:3b";
+const BEDROCK_MODEL = import.meta.env.BEDROCK_MODEL || "us.anthropic.claude-3-haiku-20240307-v1:0";
+const AWS_REGION = import.meta.env.AWS_REGION || "us-east-1";
+const USE_OLLAMA = !!OLLAMA_URL; // Solo usa Ollama si se configura explícitamente
 
+const bedrockClient = USE_OLLAMA ? null : new BedrockRuntimeClient({ region: AWS_REGION });
+
+// ─── BEDROCK (CLAUDE) ───
+async function bedrockChat(messages: { role: string; content: string }[]): Promise<string> {
+  if (!bedrockClient) throw new Error("Bedrock client not initialized");
+
+  const systemMsg = messages.find((m) => m.role === "system");
+  const systemText = systemMsg ? systemMsg.content : "";
+  const chatMessages = messages
+    .filter((m) => m.role !== "system")
+    .map((m) => ({
+      role: m.role,
+      content: [{ type: "text", text: m.content }],
+    }));
+
+  const body = JSON.stringify({
+    anthropic_version: "bedrock-2023-05-31",
+    max_tokens: 500,
+    temperature: 0.3,
+    system: systemText,
+    messages: chatMessages,
+  });
+
+  const command = new InvokeModelCommand({
+    modelId: BEDROCK_MODEL,
+    contentType: "application/json",
+    accept: "application/json",
+    body,
+  });
+
+  const response = await bedrockClient.send(command);
+  const result = JSON.parse(new TextDecoder().decode(response.body));
+  return result.content?.[0]?.text || "";
+}
+
+// ─── OLLAMA (FALLBACK SOLO SI SE CONFIGURA OLLAMA_URL) ───
 async function ollamaChat(messages: { role: string; content: string }[]): Promise<string> {
   const res = await fetch(OLLAMA_URL, {
     method: "POST",
@@ -27,6 +68,12 @@ async function ollamaChat(messages: { role: string; content: string }[]): Promis
 
   const json = await res.json();
   return json.message?.content || "";
+}
+
+// ─── LLAMADA UNIFICADA ───
+async function callAI(messages: { role: string; content: string }[]): Promise<string> {
+  if (USE_OLLAMA) return ollamaChat(messages);
+  return bedrockChat(messages);
 }
 
 const PREGUNTAS = [
@@ -100,34 +147,44 @@ Por último, revisemos las prácticas de validación en producción.
 const TOTAL = PREGUNTAS.length;
 
 function buildSystemPrompt(respuestasCount: number = 0): string {
-  let base = `Eres IteraDORA, un asistente amigable que realiza diagnósticos DevOps usando la metodología DORA. Responde en español, con un tono profesional pero cálido y natural.
-
-REGLAS DE ORO:
-1. NUNCA mezcles una pregunta con el resultado final. Son pasos separados.
-2. Cuando presentas una pregunta, SOLO muestras esa pregunta. Nada más.
-3. El resultado SOLO se muestra después de que el usuario haya respondido la Pregunta 11 con Sí o No.
-4. Cada respuesta tuya contiene ÚNICAMENTE una cosa: o un mensaje de ánimo + siguiente pregunta, o el resultado final, o recomendaciones.
-
-CONTEXTO: La presentación y la Pregunta 1 ya fueron mostradas al usuario.
-
-Las preguntas de referencia son:
-${PREGUNTAS.map((texto, i) => `Pregunta ${i + 1} de ${TOTAL}:\n${texto}`).join("\n\n")}
-
-Cuando el usuario pida recomendaciones, entrega un análisis con FORTALEZAS, OPORTUNIDADES DE MEJORA y CONCLUSIÓN. Agrupa por áreas temáticas. No uses frases como "Fallaste en la pregunta 3".
-
-Si el usuario escribe algo que no es Sí o No, responde: "Responde Sí o No a la pregunta actual, por favor."`;
-
-  // ── Instrucción dinámica según conteo REAL de respuestas ──
-  if (respuestasCount >= TOTAL) {
-    base += `\n\n⚠️ INSTRUCCIÓN FINAL: El usuario ya respondió las ${TOTAL} preguntas. Muestra el RESULTADO o RECOMENDACIONES según el último mensaje del usuario. PROHIBIDO inventar más preguntas.`;
-  } else if (respuestasCount > 0) {
-    const idx = respuestasCount; // índice de la PRÓXIMA pregunta (0-based)
+  // ── Fase de preguntas ──
+  if (respuestasCount < TOTAL) {
+    const idx = Math.max(0, respuestasCount); // índice de la PRÓXIMA pregunta
     if (idx < PREGUNTAS.length) {
-      base += `\n\n⚠️ INSTRUCCIÓN OBLIGATORIA: El backend confirma que el usuario respondió la Pregunta ${respuestasCount}. Muestra ÚNICAMENTE esto:\n\n[1 línea de ánimo]\n\nPregunta ${respuestasCount + 1} de ${TOTAL}:\n\n${PREGUNTAS[idx]}\n\nNO muestres otra pregunta distinta. NO te saltes preguntas. NO muestres resultados aún.`;
+      // Prompt mínimo: solo la pregunta exacta, sin lista completa que confunda al modelo
+      return `Eres IteraDORA, un asistente que realiza diagnósticos DevOps. Responde en español, tono profesional y cálido.
+
+REGLAS ESTRICTAS:
+1. TU ÚNICA TAREA es repetir exactamente el texto que el sistema te indica abajo. NADA MÁS.
+2. NO inventes preguntas. NO cambies el tema. NO agregues texto extra.
+
+RESPONDE ÚNICAMENTE CON ESTE TEXTO:
+
+¡Ánimo! Vas muy bien.
+
+Pregunta ${idx + 1} de ${TOTAL}:
+
+${PREGUNTAS[idx]}`;
     }
   }
 
-  return base;
+  // ── Resultado final ──
+  return `Eres IteraDORA, un asistente que realiza diagnósticos DevOps usando la metodología DORA. Responde en español, tono profesional y cálido.
+
+El usuario ya respondió las ${TOTAL} preguntas. Entrega el diagnóstico final con este formato:
+
+RESULTADO DEL DIAGNÓSTICO:
+
+Nivel: [clasificación basada en las respuestas]
+
+[breve resumen del nivel]
+
+Luego indica que puede pedir recomendaciones o hacer el diagnóstico profundo.
+
+REGLAS:
+- NO hagas más preguntas. El diagnóstico ya terminó.
+- Si el usuario pide recomendaciones, entrégalas agrupadas por FORTALEZAS, OPORTUNIDADES DE MEJORA y CONCLUSIÓN.
+- Si el usuario escribe otra cosa, recuérdale que puede pedir recomendaciones.`;
 }
 
 const RESPUESTAS_VALIDAS = ["Sí", "No", "Quiero recomendaciones", "Si", "si", "no"];
@@ -266,7 +323,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     const respuestasCount = contarRespuestas(messages);
 
-    // Filtrar mensajes off-topic ANTES de llamar a Ollama (solo en modo general)
+    // Filtrar mensajes off-topic ANTES de llamar a la IA (solo en modo general)
     if (!isDeepDiagnostic) {
       const bloqueo = validarMensaje(messages);
       if (bloqueo) {
@@ -277,13 +334,20 @@ export const POST: APIRoute = async ({ request }) => {
       }
     }
 
+    if (!USE_OLLAMA && !bedrockClient) {
+      return new Response(
+        JSON.stringify({ error: "No hay motor de IA configurado", hint: "Configura OLLAMA_URL o asegura que las credenciales AWS estén disponibles para Bedrock." }),
+        { status: 503, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const systemPrompt = isDeepDiagnostic ? buildDeepDiagnosticPrompt(deepLevel, respuestasCount) : buildSystemPrompt(respuestasCount);
-    const ollamaMessages = [
+    const aiMessages = [
       { role: "system", content: systemPrompt },
       ...messages,
     ];
 
-    const content = await ollamaChat(ollamaMessages);
+    const content = await callAI(aiMessages);
 
     if (!content) {
       return new Response(
@@ -301,9 +365,8 @@ export const POST: APIRoute = async ({ request }) => {
   } catch (err: any) {
     return new Response(
       JSON.stringify({
-        error: "No se pudo conectar con Ollama",
+        error: "Error al llamar al modelo de IA",
         detail: err.message,
-        hint: "Verifica que Ollama esté instalado y corriendo en http://127.0.0.1:11434",
       }),
       { status: 503, headers: { "Content-Type": "application/json" } }
     );
