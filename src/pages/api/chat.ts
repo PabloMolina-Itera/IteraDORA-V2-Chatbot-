@@ -306,7 +306,7 @@ export const POST: APIRoute = async ({ request }) => {
     if (deepMatch) {
       isDeepDiagnostic = true;
       deepLevel = deepMatch[1];
-      // Limpiar TODOS los mensajes del usuario con prefijo [DEEP:...], no solo el último
+      // Limpiar TODOS los mensajes del usuario con prefijo [DEEP:...]
       for (let di = 0; di < messages.length; di++) {
         if (messages[di].role === "user") {
           const dm = messages[di].content.match(/^\[DEEP:\w+\]:(.*)/);
@@ -323,7 +323,20 @@ export const POST: APIRoute = async ({ request }) => {
 
     const respuestasCount = contarRespuestas(messages);
 
-    // Filtrar mensajes off-topic ANTES de llamar a la IA (solo en modo general)
+    // ── DIAGNÓSTICO GENERAL: preguntas 2-11 SIN LLM ──
+    // Las preguntas son texto fijo. No necesitamos IA para mostrarlas.
+    if (!isDeepDiagnostic && respuestasCount < TOTAL && respuestasCount > 0) {
+      const idx = respuestasCount; // índice de la PRÓXIMA pregunta
+      if (idx < PREGUNTAS.length) {
+        const preguntaDirecta = `¡Ánimo! Vas muy bien.\n\nPregunta ${idx + 1} de ${TOTAL}:\n\n${PREGUNTAS[idx]}`;
+        return new Response(
+          JSON.stringify({ message: { role: "assistant", content: preguntaDirecta } }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // ── DIAGNÓSTICO GENERAL: off-topic ──
     if (!isDeepDiagnostic) {
       const bloqueo = validarMensaje(messages);
       if (bloqueo) {
@@ -334,6 +347,7 @@ export const POST: APIRoute = async ({ request }) => {
       }
     }
 
+    // ── LLAMADA A IA: solo para resultado final, recomendaciones, o diagnóstico profundo ──
     if (!USE_OLLAMA && !bedrockClient) {
       return new Response(
         JSON.stringify({ error: "No hay motor de IA configurado", hint: "Configura OLLAMA_URL o asegura que las credenciales AWS estén disponibles para Bedrock." }),
@@ -357,9 +371,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     return new Response(
-      JSON.stringify({
-        message: { role: "assistant", content },
-      }),
+      JSON.stringify({ message: { role: "assistant", content } }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (err: any) {

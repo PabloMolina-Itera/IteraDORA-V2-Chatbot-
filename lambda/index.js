@@ -280,11 +280,22 @@ exports.handler = async function (event) {
       }
     }
 
+    var respuestasCount = contarRespuestas(messages);
+
+    // ── DIAGNÓSTICO GENERAL: preguntas 2-11 SIN LLM ──
+    // Las preguntas son texto fijo. No necesitamos IA para mostrarlas.
+    if (!isDeepDiagnostic && respuestasCount < TOTAL && respuestasCount > 0) {
+      var idx = respuestasCount; // índice de la PRÓXIMA pregunta
+      if (idx < PREGUNTAS.length) {
+        var preguntaDirecta = "¡Ánimo! Vas muy bien.\n\nPregunta " + (idx + 1) + " de " + TOTAL + ":\n\n" + PREGUNTAS[idx];
+        return respond(200, { message: { role: "assistant", content: preguntaDirecta } });
+      }
+    }
+
     if (!USE_OLLAMA && !bedrockClient) {
       return respond(503, { error: "No hay motor de IA configurado", hint: "Configura OLLAMA_URL o asegura que la Lambda tenga permisos para Bedrock." });
     }
 
-    var respuestasCount = contarRespuestas(messages);
     var systemPrompt = isDeepDiagnostic ? buildDeepDiagnosticPrompt(deepLevel, respuestasCount) : buildSystemPrompt(respuestasCount);
     var aiMessages = [{ role: "system", content: systemPrompt }].concat(messages);
     var content = await callAI(aiMessages);
