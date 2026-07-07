@@ -1,6 +1,6 @@
 function initChatDiagnostico() {
-  // URL de la Lambda backend (cambiar por la Function URL real)
-  const API_URL = import.meta.env.PUBLIC_LAMBDA_URL || "/api/chat";
+  // Backend: endpoint de Astro SSR con Bedrock Claude integrado
+  const API_URL = "/api/chat";
 
   const messagesEl = document.getElementById("chat-messages")!;
   const btnContainer = document.getElementById("btn-container")!;
