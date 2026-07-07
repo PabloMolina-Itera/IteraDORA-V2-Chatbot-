@@ -45,7 +45,7 @@ import Footer from "../components/Footer.astro";
                 px-4 py-1.5 rounded-full
                 text-[#00A8D8] text-sm font-semibold
                 tracking-wide uppercase
-                mb-6 reveal">
+                mb-6">
       <span class="w-2 h-2 rounded-full bg-[#00A8D8] animate-pulse"></span>
       Metodología DORA
     </div>
@@ -53,7 +53,7 @@ import Footer from "../components/Footer.astro";
     <!-- Título -->
     <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl
                font-extrabold leading-[1.08] tracking-tight
-               text-white mb-6 reveal">
+               text-white mb-6">
       Descubre el nivel real de
       <span class="text-[#00A8D8]">madurez DevOps</span>
       de tu organización
@@ -62,14 +62,14 @@ import Footer from "../components/Footer.astro";
     <!-- Descripción -->
     <p class="text-base sm:text-lg md:text-xl text-gray-300
               leading-relaxed mb-10
-              max-w-2xl mx-auto reveal">
+              max-w-2xl mx-auto">
       Diagnóstico automatizado basado en la metodología DORA.
       Toma decisiones estratégicas respaldadas por datos
       y acelera la transformación de tu equipo.
     </p>
 
     <!-- CTA + secundario -->
-    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 reveal">
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
       <a href="#diagnostico"
          class="inline-block text-center
                 bg-[#00A8D8] hover:bg-[#0095c2]
@@ -93,7 +93,7 @@ import Footer from "../components/Footer.astro";
     </div>
 
     <!-- Mini stats -->
-    <div class="flex flex-wrap items-center justify-center gap-6 sm:gap-10 reveal">
+    <div class="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
       <div>
         <div class="text-2xl sm:text-3xl font-bold text-white">11</div>
         <div class="text-xs sm:text-sm text-gray-400">preguntas clave</div>
@@ -236,7 +236,7 @@ import Footer from "../components/Footer.astro";
     <div class="max-w-6xl mx-auto px-6">
 
       <!-- Encabezado -->
-      <div class="text-center mb-16 reveal">
+      <div class="text-center mb-16">
         <h2 class="text-4xl md:text-5xl font-extrabold
                    text-[#00334E] dark:text-white mb-4">
           ¿Cómo funciona?
@@ -402,7 +402,7 @@ import Footer from "../components/Footer.astro";
     <div class="max-w-6xl mx-auto px-6 text-center">
 
       <h2 class="text-4xl md:text-5xl font-extrabold
-                 text-[#00334E] dark:text-white mb-16 reveal">
+                 text-[#00334E] dark:text-white mb-16">
         Diagnóstico DevOps
       </h2>
 
@@ -482,31 +482,11 @@ import Footer from "../components/Footer.astro";
     100% { transform: translate(0%, 0%) scale(1); }
   }
 
-  @keyframes glow-pulse {
-    0%, 100% { opacity: 0.5; }
-    50%      { opacity: 0.8; }
-  }
-
   .living-photo-bg {
     /* la imagen respira debajo del texto */
   }
 
   .living-photo-inner {
     animation: living-photo 12s ease-in-out infinite;
-  }
-
-  .animate-glow-pulse {
-    animation: glow-pulse 4s ease-in-out infinite;
-  }
-
-  /* ─── Card flotante ─── */
-  @keyframes hero-float-card {
-    0%, 100% { transform: translateY(0); }
-    40%      { transform: translateY(-8px); }
-  }
-
-  .hero-float-card {
-    animation: hero-float-card 5s ease-in-out infinite;
-    animation-delay: 1.5s;
   }
 </style>

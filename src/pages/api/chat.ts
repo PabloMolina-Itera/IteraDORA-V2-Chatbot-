@@ -156,6 +156,13 @@ Por último, revisemos las prácticas de validación en producción.
 
 const TOTAL = PREGUNTAS.length;
 
+// Configuración compartida del diagnóstico profundo
+const DEEP_PRACTICES: Record<string, Record<string, number>> = {
+  Fundacional:  { CV: 1, BD: 2, EC: 3, AP: 5, IS: 6, IC: 2 },
+  Intermedio:   { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
+  Avanzado:     { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
+};
+
 function buildSystemPrompt(respuestasCount: number = 0): string {
   // ── Fase de preguntas ──
   if (respuestasCount < TOTAL) {
@@ -201,12 +208,7 @@ const RESPUESTAS_VALIDAS = ["Sí", "No", "Quiero recomendaciones", "Si", "si", "
 
 // ─── DEEP DIAGNOSTIC PROMPT ───
 function buildDeepDiagnosticPrompt(level: string, respuestasCount: number = 0): string {
-  const practices: Record<string, Record<string, number>> = {
-    Fundacional:  { CV: 1, BD: 2, EC: 3, AP: 5, IS: 6, IC: 2 },
-    Intermedio:   { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
-    Avanzado:     { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
-  };
-  const cats = practices[level] || practices["Intermedio"];
+  const cats = DEEP_PRACTICES[level] || DEEP_PRACTICES["Intermedio"];
   const totalPracticas = Object.values(cats).reduce((a: number, b: number) => a + b, 0);
 
   // ── Primera pregunta: texto fijo desde el backend ──
@@ -339,12 +341,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     // ── DIAGNÓSTICO PROFUNDO: primera pregunta SIN LLM ──
     if (isDeepDiagnostic && respuestasCount === 0) {
-      const practices: Record<string, Record<string, number>> = {
-        Fundacional:  { CV: 1, BD: 2, EC: 3, AP: 5, IS: 6, IC: 2 },
-        Intermedio:   { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
-        Avanzado:     { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
-      };
-      const cats = practices[deepLevel] || practices["Intermedio"];
+      const cats = DEEP_PRACTICES[deepLevel] || DEEP_PRACTICES["Intermedio"];
       const total = Object.values(cats).reduce((a: number, b: number) => a + b, 0);
       const preguntaDirecta = `[CV] Pregunta 1 de ${total}:\n\nTema: Sistema de Control de Versiones\n\nUn sistema de control de versiones como Git es la base fundamental de cualquier práctica DevOps.\n\n¿La organización utiliza un sistema de control de versiones como Git para gestionar todos sus repositorios de código?`;
       return new Response(

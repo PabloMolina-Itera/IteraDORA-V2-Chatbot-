@@ -43,8 +43,6 @@ function initChatDiagnostico() {
     Intermedio:  { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
     Avanzado:    { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
   };
-  let deepCategoriasCompletadas = 0;
-  let deepDiagnosticoFinalizado = false;
 
   // Los botones Sí/No y Pregunta 1 están ocultos hasta que se pulse "Comencemos"
   btnSi.disabled = true;
@@ -304,7 +302,7 @@ function initChatDiagnostico() {
     else return "Avanzado";
   }
 
-  function showResultCard(_content: string) {
+  function showResultCard() {
     const porcentaje = Math.round((respuestasSi / TOTAL_PREGUNTAS) * 100);
     const nivel = computeLevel();
 
@@ -436,41 +434,6 @@ function initChatDiagnostico() {
     deepResultCard.scrollIntoView({ behavior: "smooth" });
   }
 
-  function esPaso2(content: string): boolean {
-    return content.includes("listo para comenzar") && content.includes("- ");
-  }
-
-  function splitPaso2(content: string): string[] {
-    const lines = content.split("\n");
-    const greeting: string[] = [],
-      bullets: string[] = [],
-      closing: string[] = [];
-    let section: "greeting" | "bullets" | "closing" = "greeting";
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      if (trimmed.startsWith("-")) {
-        section = "bullets";
-        bullets.push(trimmed);
-      } else if (section === "bullets" && trimmed.startsWith("¿")) {
-        section = "closing";
-        closing.push(trimmed);
-      } else if (section === "closing") {
-        closing.push(trimmed);
-      } else {
-        greeting.push(trimmed);
-      }
-    }
-    const parts: string[] = [];
-    const g = greeting.join("\n");
-    if (g) parts.push(g);
-    const b = bullets.join("\n");
-    if (b) parts.push(b);
-    const c = closing.join("\n");
-    if (c) parts.push(c);
-    return parts.length >= 2 ? parts : [content];
-  }
-
   function esPregunta(content: string): boolean {
     return /Pregunta \d+ de \d+:/i.test(content);
   }
@@ -493,37 +456,11 @@ function initChatDiagnostico() {
     return upper.includes("RESULTADO DEL DIAGN") && (upper.includes("NIVEL:") || upper.includes("NIVEL "));
   }
 
-  function splitResultado(content: string): string[] {
-    const parts: string[] = [];
-    const introMatch = content.match(/^([\s\S]*?)RESULTADO DEL DIAGNÓSTICO:/i);
-    if (introMatch && introMatch[1].trim()) parts.push(introMatch[1].trim());
-    const bloqueMatch = content.match(/(RESULTADO DEL DIAGNÓSTICO:[\s\S]*?Rangos: [^\n]+)/i);
-    if (bloqueMatch) {
-      parts.push(bloqueMatch[1].trim());
-      const restante = content
-        .substring(content.indexOf(bloqueMatch[1]) + bloqueMatch[1].length)
-        .trim();
-      if (restante) parts.push(restante);
-    }
-    return parts.length >= 2 ? parts : [content];
-  }
-
-  /** Limpia instrucciones del sistema que el modelo pequeño pueda escupir sin querer */
+  /** Limpia artefactos del modelo (firmas sueltas, instrucciones filtradas) */
   function sanitizarTextoIA(texto: string): string {
     return texto
-      .replace(/Si crees que el usuario[\s\S]*?importante:[\s\S]*?puntaje\.?/gi, "")
-      .replace(/IMPORTANTE:?\s*No inventes?[\s\S]*?puntaje\.?/gi, "")
-      .replace(/Despu[eé]s de dar recomendaciones[\s\S]*?\./gi, "")
-      .replace(/Si te piden recomendaciones[\s\S]*?\./gi, "")
-      .replace(/PREGUNTAS\s*\(hazlas en orden[^)]*\):?\s*/gi, "")
-      .replace(/REGLAS?:?[\s\S]*?(?=\.|\n|$)/gi, "")
-      .replace(/FLUJO:?[\s\S]*?(?=\.|\n|$)/gi, "")
-      .replace(/PASO \d[^:]*:[\s\S]*?(?=\n\n|\n\d|\n¿|$)/gi, "")
-      .replace(/Off-topic:[\s\S]*?(?=\.|\n|$)/gi, "")
-      // Limpiar "IA" suelto y otras firmas que el modelo pueda inventar
       .replace(/^IA\s*$/gim, "")
-      .replace(/^Asistente:?\s*$/gim, "")
-      .replace(/^Respuesta:?\s*$/gim, "")
+      .replace(/^(Asistente|Respuesta):?\s*$/gim, "")
       .trim();
   }
 
@@ -574,7 +511,6 @@ function initChatDiagnostico() {
       // ── Diagnóstico Profundo ──
       if (deepDiagnosticActive) {
         if (esResultadoProfundo(fullReply)) {
-          deepDiagnosticoFinalizado = true;
           deepDiagnosticActive = false;
           addMessage("assistant", "✅ Diagnóstico profundo completado.");
           await delay(500);
@@ -600,10 +536,6 @@ function initChatDiagnostico() {
         const fallback = "Lo siento, no pude procesar tu respuesta.";
         addMessage("assistant", fallback);
         messages.push({ role: "assistant", content: fallback });
-      } else if (esPaso2(fullReply)) {
-        const partes = splitPaso2(fullReply);
-        for (let i = 0; i < partes.length; i++) addMessage("assistant", partes[i]);
-        messages.push({ role: "assistant", content: fullReply });
       } else if (esPregunta(fullReply)) {
         showButtons(true);
         const partes = splitPregunta(fullReply);
@@ -622,7 +554,7 @@ function initChatDiagnostico() {
           addMessage("assistant", "Diagnostico completado. Estos son tus resultados:");
         }
         await delay(500);
-        showResultCard(textoLimpio);
+        showResultCard();
         resultadoMostrado = true;
 
         showRecButton();
@@ -680,8 +612,6 @@ function initChatDiagnostico() {
     deepDiagnosticActive = true;
     deepRespuestasPorCategoria = {};
     deepUltimaCategoria = "";
-    deepCategoriasCompletadas = 0;
-    deepDiagnosticoFinalizado = false;
 
     // Limpiar historial para que la IA empiece fresca el diagnóstico profundo
     messages = [];
