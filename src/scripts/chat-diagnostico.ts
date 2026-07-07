@@ -322,7 +322,12 @@ function initChatDiagnostico() {
   }
 
   function esResultadoProfundo(content: string): boolean {
-    return content.includes("=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===");
+    const upper = content.toUpperCase();
+    // Detectar bloque de métricas o informe final completo
+    return upper.includes("=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===")
+      || (upper.includes("RESULTADOS DEL DIAGNÓSTICO") && (upper.includes("CV:") || upper.includes("BD:")))
+      || (upper.includes("RESEÑA") && upper.includes("CONCLUSI"))
+      || (upper.includes("RECOMENDACIONES") && (upper.includes("CV:") || upper.includes("BD:")));
   }
 
   function parsearResultadosProfundos(content: string): Record<string, string> {
@@ -393,27 +398,58 @@ function initChatDiagnostico() {
     }
     dashboard.appendChild(metricsGrid);
 
-    // ─── Análisis (si hay texto después del bloque de resultados) ───
-    const analysisText = markdown.split("=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===")[1] || "";
-    const linesAfter = analysisText.split("\n");
-    // Buscar líneas que no sean los scores (CV:, BD:, etc.)
-    const analysisLines: string[] = [];
-    let scoresDone = false;
-    for (const line of linesAfter) {
-      if (/^(CV|BD|EC|AP|IS|IC):\s*\d+\/\d+/.test(line.trim())) continue;
-      const trimmed = line.trim();
-      if (trimmed && !scoresDone) {
-        if (!/^\w{2}:/.test(trimmed)) scoresDone = true;
+    // ─── Extraer texto post-métricas: reseña, conclusión, recomendaciones ───
+    const postMetrics = markdown.split(/=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===/i)[1] || markdown;
+    const allLines = postMetrics.split("\n");
+    const scoreLines: string[] = [];
+    const otherLines: string[] = [];
+    let scoresSection = true;
+    for (const line of allLines) {
+      const t = line.trim();
+      if (!t) continue;
+      if (/^(CV|BD|EC|AP|IS|IC):\s*\d+\/\d+/.test(t)) {
+        scoreLines.push(t);
+      } else if (scoresSection && /^\w{2}:\s*\d+\/\d+/.test(t)) {
+        scoreLines.push(t);
+      } else {
+        scoresSection = false;
+        otherLines.push(t);
       }
-      if (scoresDone && trimmed) analysisLines.push(trimmed);
     }
 
-    if (analysisLines.length > 0) {
-      const analysisSec = document.createElement("div");
-      analysisSec.className = "deep-analysis";
-      const analysisText = analysisLines.join("\n");
-      analysisSec.innerHTML = '<h4>📊 Análisis Ejecutivo</h4><div class="deep-analysis-body">' + (marked.parse(analysisText) as string) + '</div>';
-      dashboard.appendChild(analysisSec);
+    if (otherLines.length > 0) {
+      const fullText = otherLines.join("\n");
+      const sections = parseSecciones(fullText);
+
+      // Reseña / Análisis
+      if (sections.fortalezas || sections.oportunidades) {
+        if (sections.fortalezas) {
+          const sec = document.createElement("div");
+          sec.className = "deep-analysis";
+          sec.innerHTML = '<h4>📊 Reseña de Resultados</h4><div class="deep-analysis-body">' + (marked.parse(sections.fortalezas) as string) + '</div>';
+          dashboard.appendChild(sec);
+        }
+        if (sections.oportunidades) {
+          const sec = document.createElement("div");
+          sec.className = "deep-analysis";
+          sec.innerHTML = '<h4>💡 Recomendaciones</h4><div class="deep-analysis-body">' + (marked.parse(sections.oportunidades) as string) + '</div>';
+          dashboard.appendChild(sec);
+        }
+      } else {
+        // Sin secciones claras: mostrar todo junto como análisis
+        const sec = document.createElement("div");
+        sec.className = "deep-analysis";
+        sec.innerHTML = '<h4>📊 Análisis y Recomendaciones</h4><div class="deep-analysis-body">' + (marked.parse(fullText) as string) + '</div>';
+        dashboard.appendChild(sec);
+      }
+
+      // Conclusión
+      if (sections.conclusion) {
+        const sec = document.createElement("div");
+        sec.className = "deep-analysis conclusion-section";
+        sec.innerHTML = '<h4>🎯 Conclusión</h4><div class="conclusion-body">' + (marked.parse(sections.conclusion) as string) + '</div>';
+        dashboard.appendChild(sec);
+      }
     }
 
     return dashboard;
@@ -523,6 +559,8 @@ function initChatDiagnostico() {
           addMessage("assistant", limpiarPrefijoCat(fullReply));
           messages.push({ role: "assistant", content: fullReply });
         } else {
+          // No es pregunta ni resultado: ocultar botones (análisis o contenido final)
+          showButtons(false);
           addMessage("assistant", limpiarPrefijoCat(fullReply));
           messages.push({ role: "assistant", content: fullReply });
         }
