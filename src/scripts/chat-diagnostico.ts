@@ -511,10 +511,11 @@ function initChatDiagnostico() {
           showDeepResultCard(fullReply);
           state = "completed";
           showButtons(false);
-          // Ocultar todos los botones de acción, solo volver al inicio
+          // Solo "Volver al inicio" visible
           recContainer.classList.add("hidden");
           deepContainer.classList.add("hidden");
           btnContainer.classList.add("hidden");
+          document.getElementById("btn-volver-deep")!.classList.add("hidden");
           messages.push({ role: "assistant", content: fullReply });
         } else if (esPreguntaProfunda(fullReply)) {
           deepUltimaCategoria = extraerCategoria(fullReply);
@@ -558,7 +559,8 @@ function initChatDiagnostico() {
         messagesEl.appendChild(dashboard);
         scrollToBottom();
         state = "completed";
-        // Ocultar Recomendaciones, mostrar solo Diagnóstico Profundo
+        // Ocultar "Regresar al chat", solo "Volver al inicio" + Deep
+        document.getElementById("btn-volver-chat")!.classList.add("hidden");
         recContainer.classList.add("hidden");
         btnRec.disabled = true;
         deepContainer.classList.remove("hidden");
