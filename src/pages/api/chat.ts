@@ -325,9 +325,8 @@ export const POST: APIRoute = async ({ request }) => {
     const respuestasCount = contarRespuestas(messages);
 
     // ── DIAGNÓSTICO GENERAL: todas las preguntas SIN LLM ──
-    // Las preguntas son texto fijo. No necesitamos IA para mostrarlas.
     if (!isDeepDiagnostic && respuestasCount < TOTAL) {
-      const idx = respuestasCount; // índice de la PRÓXIMA pregunta
+      const idx = respuestasCount;
       if (idx < PREGUNTAS.length) {
         const animo = idx > 0 ? "¡Ánimo! Vas muy bien.\n\n" : "";
         const preguntaDirecta = `${animo}Pregunta ${idx + 1} de ${TOTAL}:\n\n${PREGUNTAS[idx]}`;
@@ -336,6 +335,22 @@ export const POST: APIRoute = async ({ request }) => {
           { status: 200, headers: { "Content-Type": "application/json" } }
         );
       }
+    }
+
+    // ── DIAGNÓSTICO PROFUNDO: primera pregunta SIN LLM ──
+    if (isDeepDiagnostic && respuestasCount === 0) {
+      const practices: Record<string, Record<string, number>> = {
+        Fundacional:  { CV: 1, BD: 2, EC: 3, AP: 5, IS: 6, IC: 2 },
+        Intermedio:   { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
+        Avanzado:     { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
+      };
+      const cats = practices[deepLevel] || practices["Intermedio"];
+      const total = Object.values(cats).reduce((a: number, b: number) => a + b, 0);
+      const preguntaDirecta = `[CV] Pregunta 1 de ${total}:\n\nTema: Sistema de Control de Versiones\n\nUn sistema de control de versiones como Git es la base fundamental de cualquier práctica DevOps.\n\n¿La organización utiliza un sistema de control de versiones como Git para gestionar todos sus repositorios de código?`;
+      return new Response(
+        JSON.stringify({ message: { role: "assistant", content: preguntaDirecta } }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     // ── DIAGNÓSTICO GENERAL: off-topic ──
@@ -349,7 +364,7 @@ export const POST: APIRoute = async ({ request }) => {
       }
     }
 
-    // ── LLAMADA A IA: solo para resultado final, recomendaciones, o diagnóstico profundo ──
+    // ── LLAMADA A IA: solo para resultado final, recomendaciones, o resto del diagnóstico profundo ──
     if (!USE_OLLAMA && !(await getBedrockClient())) {
       return new Response(
         JSON.stringify({ error: "No hay motor de IA configurado", hint: "Configura OLLAMA_URL o asegura que las credenciales AWS estén disponibles para Bedrock." }),

@@ -421,7 +421,7 @@ function initChatDiagnostico() {
         showResultCard(textoLimpio);
         resultadoMostrado = true;
 
-        showRecAndDeepButtons();
+        showRecButton();
         messages.push({ role: "assistant", content: fullReply });
       } else if (resultadoMostrado) {
         const goodbyeMatch = fullReply.match(/(Gracias por confiar[^]*)$/i);
@@ -434,7 +434,10 @@ function initChatDiagnostico() {
           addMessage("assistant", fullReply);
         }
         diagnosticoFinalizado = true;
-        btnRec.disabled = false;
+        // Ocultar Recomendaciones, mostrar solo Diagnóstico Profundo
+        recContainer.classList.add("hidden");
+        btnRec.disabled = true;
+        deepContainer.classList.remove("hidden");
         btnDeep.disabled = false;
       } else {
         addMessage("assistant", fullReply);

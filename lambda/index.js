@@ -265,14 +265,26 @@ exports.handler = async function (event) {
     var respuestasCount = contarRespuestas(messages);
 
     // ── DIAGNÓSTICO GENERAL: todas las preguntas SIN LLM ──
-    // Las preguntas son texto fijo. No necesitamos IA para mostrarlas.
     if (!isDeepDiagnostic && respuestasCount < TOTAL) {
-      var idx = respuestasCount; // índice de la PRÓXIMA pregunta
+      var idx = respuestasCount;
       if (idx < PREGUNTAS.length) {
         var animo = idx > 0 ? "¡Ánimo! Vas muy bien.\n\n" : "";
         var preguntaDirecta = animo + "Pregunta " + (idx + 1) + " de " + TOTAL + ":\n\n" + PREGUNTAS[idx];
         return respond(200, { message: { role: "assistant", content: preguntaDirecta } });
       }
+    }
+
+    // ── DIAGNÓSTICO PROFUNDO: primera pregunta SIN LLM ──
+    if (isDeepDiagnostic && respuestasCount === 0) {
+      var deepPractices = {
+        "Fundacional":  { CV: 1, BD: 2, EC: 3, AP: 5, IS: 6, IC: 2 },
+        "Intermedio":   { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
+        "Avanzado":     { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
+      };
+      var deepCats = deepPractices[deepLevel] || deepPractices["Intermedio"];
+      var deepTotal = Object.values(deepCats).reduce(function (a, b) { return a + b; }, 0);
+      var deepPreguntaDirecta = "[CV] Pregunta 1 de " + deepTotal + ":\n\nTema: Sistema de Control de Versiones\n\nUn sistema de control de versiones como Git es la base fundamental de cualquier práctica DevOps.\n\n¿La organización utiliza un sistema de control de versiones como Git para gestionar todos sus repositorios de código?";
+      return respond(200, { message: { role: "assistant", content: deepPreguntaDirecta } });
     }
 
     if (!USE_OLLAMA && !bedrockClient) {
