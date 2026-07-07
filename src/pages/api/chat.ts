@@ -1,51 +1,66 @@
 import type { APIRoute } from "astro";
-import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 
 export const prerender = false;
 
-// ─── Configuración de motores de IA ───
+// ─── Configuración ───
 const OLLAMA_URL = import.meta.env.OLLAMA_URL || "";
 const OLLAMA_MODEL = import.meta.env.OLLAMA_MODEL || "llama3.2:3b";
 const BEDROCK_MODEL = import.meta.env.BEDROCK_MODEL || "us.anthropic.claude-3-haiku-20240307-v1:0";
 const AWS_REGION = import.meta.env.AWS_REGION || "us-east-1";
-const USE_OLLAMA = !!OLLAMA_URL; // Solo usa Ollama si se configura explícitamente
+const USE_OLLAMA = !!OLLAMA_URL;
 
-const bedrockClient = USE_OLLAMA ? null : new BedrockRuntimeClient({ region: AWS_REGION });
+// ─── Cliente Bedrock lazy (evita crash si el SDK no está disponible) ───
+let bedrockClient: any = null;
+let bedrockInitAttempted = false;
+
+async function getBedrockClient() {
+  if (!bedrockInitAttempted && !USE_OLLAMA) {
+    bedrockInitAttempted = true;
+    try {
+      const { BedrockRuntimeClient } = await import("@aws-sdk/client-bedrock-runtime");
+      bedrockClient = new BedrockRuntimeClient({ region: AWS_REGION });
+    } catch (e: any) {
+      console.error("Bedrock init error:", e.message);
+    }
+  }
+  return bedrockClient;
+}
 
 // ─── BEDROCK (CLAUDE) ───
 async function bedrockChat(messages: { role: string; content: string }[]): Promise<string> {
-  if (!bedrockClient) throw new Error("Bedrock client not initialized");
+  const client = await getBedrockClient();
+  if (!client) throw new Error("Bedrock no disponible");
 
-  const systemMsg = messages.find((m) => m.role === "system");
+  const systemMsg = messages.find((m: any) => m.role === "system");
   const systemText = systemMsg ? systemMsg.content : "";
   const chatMessages = messages
-    .filter((m) => m.role !== "system")
-    .map((m) => ({
+    .filter((m: any) => m.role !== "system")
+    .map((m: any) => ({
       role: m.role,
       content: [{ type: "text", text: m.content }],
     }));
 
-  const body = JSON.stringify({
-    anthropic_version: "bedrock-2023-05-31",
-    max_tokens: 500,
-    temperature: 0.3,
-    system: systemText,
-    messages: chatMessages,
-  });
+  const { InvokeModelCommand } = await import("@aws-sdk/client-bedrock-runtime");
 
   const command = new InvokeModelCommand({
     modelId: BEDROCK_MODEL,
     contentType: "application/json",
     accept: "application/json",
-    body,
+    body: JSON.stringify({
+      anthropic_version: "bedrock-2023-05-31",
+      max_tokens: 500,
+      temperature: 0.3,
+      system: systemText,
+      messages: chatMessages,
+    }),
   });
 
-  const response = await bedrockClient.send(command);
+  const response = await client.send(command);
   const result = JSON.parse(new TextDecoder().decode(response.body));
   return result.content?.[0]?.text || "";
 }
 
-// ─── OLLAMA (FALLBACK SOLO SI SE CONFIGURA OLLAMA_URL) ───
+// ─── OLLAMA (FALLBACK) ───
 async function ollamaChat(messages: { role: string; content: string }[]): Promise<string> {
   const res = await fetch(OLLAMA_URL, {
     method: "POST",
@@ -54,18 +69,13 @@ async function ollamaChat(messages: { role: string; content: string }[]): Promis
       model: OLLAMA_MODEL,
       messages,
       stream: false,
-      options: {
-        num_predict: 500,
-        temperature: 0.3,
-      },
+      options: { num_predict: 500, temperature: 0.3 },
     }),
   });
-
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Ollama error ${res.status}: ${text.substring(0, 200)}`);
   }
-
   const json = await res.json();
   return json.message?.content || "";
 }
@@ -348,7 +358,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // ── LLAMADA A IA: solo para resultado final, recomendaciones, o diagnóstico profundo ──
-    if (!USE_OLLAMA && !bedrockClient) {
+    if (!USE_OLLAMA && !(await getBedrockClient())) {
       return new Response(
         JSON.stringify({ error: "No hay motor de IA configurado", hint: "Configura OLLAMA_URL o asegura que las credenciales AWS estén disponibles para Bedrock." }),
         { status: 503, headers: { "Content-Type": "application/json" } }
