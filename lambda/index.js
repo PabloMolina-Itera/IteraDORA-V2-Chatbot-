@@ -282,12 +282,13 @@ exports.handler = async function (event) {
 
     var respuestasCount = contarRespuestas(messages);
 
-    // ── DIAGNÓSTICO GENERAL: preguntas 2-11 SIN LLM ──
+    // ── DIAGNÓSTICO GENERAL: todas las preguntas SIN LLM ──
     // Las preguntas son texto fijo. No necesitamos IA para mostrarlas.
-    if (!isDeepDiagnostic && respuestasCount < TOTAL && respuestasCount > 0) {
+    if (!isDeepDiagnostic && respuestasCount < TOTAL) {
       var idx = respuestasCount; // índice de la PRÓXIMA pregunta
       if (idx < PREGUNTAS.length) {
-        var preguntaDirecta = "¡Ánimo! Vas muy bien.\n\nPregunta " + (idx + 1) + " de " + TOTAL + ":\n\n" + PREGUNTAS[idx];
+        var animo = idx > 0 ? "¡Ánimo! Vas muy bien.\n\n" : "";
+        var preguntaDirecta = animo + "Pregunta " + (idx + 1) + " de " + TOTAL + ":\n\n" + PREGUNTAS[idx];
         return respond(200, { message: { role: "assistant", content: preguntaDirecta } });
       }
     }

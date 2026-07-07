@@ -22,7 +22,6 @@ function initChatDiagnostico() {
 
   const TOTAL_PREGUNTAS = 11;
   const btnComenzar = document.getElementById("btn-comenzar") as HTMLButtonElement;
-  const bubblePregunta1 = document.getElementById("bubble-pregunta-1")!;
 
   let messages: { role: string; content: string }[] = [];
   let isLoading = false;
@@ -52,18 +51,29 @@ function initChatDiagnostico() {
 
   const comenzarContainer = document.getElementById("comenzar-container")!;
 
-  btnComenzar.addEventListener("click", () => {
+  btnComenzar.addEventListener("click", async () => {
     btnComenzar.disabled = true;
     btnComenzar.textContent = "Comenzando...";
-    setTimeout(() => {
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [] }),
+      });
+      const data = await res.json();
+      const content = data.message?.content || "";
       comenzarContainer.classList.add("hidden");
-      bubblePregunta1.classList.remove("hidden");
+      addMessage("assistant", content);
+      messages.push({ role: "assistant", content });
       btnContainer.classList.remove("hidden");
       btnSi.disabled = false;
       btnNo.disabled = false;
       botonesVisibles = true;
       scrollToBottom();
-    }, 400);
+    } catch (e) {
+      btnComenzar.disabled = false;
+      btnComenzar.textContent = "Reintentar";
+    }
   });
 
   function scrollToBottom() {

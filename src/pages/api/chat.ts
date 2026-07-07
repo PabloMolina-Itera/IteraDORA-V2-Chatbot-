@@ -333,12 +333,13 @@ export const POST: APIRoute = async ({ request }) => {
 
     const respuestasCount = contarRespuestas(messages);
 
-    // ── DIAGNÓSTICO GENERAL: preguntas 2-11 SIN LLM ──
+    // ── DIAGNÓSTICO GENERAL: todas las preguntas SIN LLM ──
     // Las preguntas son texto fijo. No necesitamos IA para mostrarlas.
-    if (!isDeepDiagnostic && respuestasCount < TOTAL && respuestasCount > 0) {
+    if (!isDeepDiagnostic && respuestasCount < TOTAL) {
       const idx = respuestasCount; // índice de la PRÓXIMA pregunta
       if (idx < PREGUNTAS.length) {
-        const preguntaDirecta = `¡Ánimo! Vas muy bien.\n\nPregunta ${idx + 1} de ${TOTAL}:\n\n${PREGUNTAS[idx]}`;
+        const animo = idx > 0 ? "¡Ánimo! Vas muy bien.\n\n" : "";
+        const preguntaDirecta = `${animo}Pregunta ${idx + 1} de ${TOTAL}:\n\n${PREGUNTAS[idx]}`;
         return new Response(
           JSON.stringify({ message: { role: "assistant", content: preguntaDirecta } }),
           { status: 200, headers: { "Content-Type": "application/json" } }
