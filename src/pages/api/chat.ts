@@ -207,52 +207,56 @@ function buildDeepDiagnosticPrompt(level: string, respuestasCount: number = 0): 
     Avanzado:     { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
   };
   const cats = practices[level] || practices["Intermedio"];
-  const catNames: Record<string, string> = {
-    CV: "Control de Versiones", BD: "Build & Deploy Automation",
-    EC: "Code Standards & Quality Code", AP: "Test Automation",
-    IS: "Security Engineering", IC: "Continuous Integration"
-  };
   const totalPracticas = Object.values(cats).reduce((a: number, b: number) => a + b, 0);
 
-  let base = `Eres IteraDORA, realizando un DIAGNÓSTICO PROFUNDO de madurez DevOps nivel ${level}.
+  // ── Primera pregunta: texto fijo desde el backend ──
+  if (respuestasCount === 0) {
+    return `Eres IteraDORA. Diagnóstico profundo nivel ${level}. Responde en español.
 
-IMPORTANTE: El diagnóstico general de 11 preguntas YA TERMINÓ. Esto es el DIAGNÓSTICO PROFUNDO.
-El usuario es nivel ${level}. IGNORA mensajes anteriores. PROHIBIDO usar 'Pregunta X de 11'. Solo formato [CAT].
+RESPONDE ÚNICAMENTE CON ESTE TEXTO:
 
-Haz preguntas de Sí/No sobre prácticas DevOps específicas para este nivel, organizadas por categoría.
-Haz UNA pregunta a la vez. No mezcles categorías en una misma respuesta.
+[CV] Pregunta 1 de ${totalPracticas}:
 
-CATEGORÍAS (en este orden exacto):
-1. CV - ${catNames.CV} (${cats.CV} prácticas)
-2. BD - ${catNames.BD} (${cats.BD} prácticas)
-3. EC - ${catNames.EC} (${cats.EC} prácticas)
-4. AP - ${catNames.AP} (${cats.AP} prácticas)
-5. IS - ${catNames.IS} (${cats.IS} prácticas)
-6. IC - ${catNames.IC} (${cats.IC} prácticas)
+Tema: Sistema de Control de Versiones
 
-Total: ${totalPracticas} prácticas. Para cada una, pregunta si la organización YA implementa esa práctica (Sí/No).
+Un sistema de control de versiones como Git es la base fundamental de cualquier práctica DevOps.
 
-FORMATO DE CADA PREGUNTA (OBLIGATORIO - o el sistema fallará):
-[XX] Pregunta X de ${totalPracticas}:
+¿La organización utiliza un sistema de control de versiones como Git para gestionar todos sus repositorios de código?`;
+  }
 
-Tema: [título corto y descriptivo de la práctica]
+  // ── Preguntas siguientes: instrucción simple ──
+  if (respuestasCount < totalPracticas) {
+    return `Eres IteraDORA. Diagnóstico profundo DevOps nivel ${level}. Responde en español.
 
-[Una o dos líneas explicando brevemente por qué esta práctica es importante]
+El usuario respondió ${respuestasCount} de ${totalPracticas} prácticas. Ahora te toca la pregunta ${respuestasCount + 1} de ${totalPracticas}.
 
-¿[pregunta concreta que se responda con Sí o No]?
+FORMATO OBLIGATORIO - copia esta estructura exacta:
 
-Donde [XX] es el código REAL de categoría (CV, BD, EC, AP, IS, IC). NO uses [CAT] literal.
-X = número secuencial global, de 1 hasta ${totalPracticas}. NO reinicies el conteo por categoría.
+[CAT] Pregunta ${respuestasCount + 1} de ${totalPracticas}:
 
-REGLAS:
-- Cuando el usuario responda Sí o No, confirma (1 línea) y siguiente pregunta
-- NO des recomendaciones ni análisis hasta completar TODAS las preguntas
-- Preguntas ESPECÍFICAS para nivel ${level}
-- Para nivel Fundacional: pregunta sobre prácticas básicas (repositorios, primeros pipelines, documentación)
-- Para nivel Intermedio: pregunta sobre automatización, CI/CD, testing automatizado, monitoreo
-- Para nivel Avanzado: pregunta sobre canary releases, feature flags, SLOs, chaos engineering, DevSecOps
+Tema: [título corto]
 
-DESPUÉS DE LA ÚLTIMA PREGUNTA (${totalPracticas} en total), muestra ÚNICAMENTE este bloque:
+[una frase explicando la importancia]
+
+¿[pregunta concreta de Sí o No]?
+
+REEMPLAZA [CAT] por una de estas siglas según la categoría que corresponda:
+- CV = Control de Versiones (${cats.CV} prácticas en total)
+- BD = Build & Deploy (${cats.BD} prácticas en total)
+- EC = Code Standards (${cats.EC} prácticas en total)
+- AP = Test Automation (${cats.AP} prácticas en total)
+- IS = Security Engineering (${cats.IS} prácticas en total)
+- IC = Continuous Integration (${cats.IC} prácticas en total)
+
+El orden es: CV → BD → EC → AP → IS → IC. Ya se respondieron ${respuestasCount}. La categoría actual es la que corresponda según el orden y conteo.
+
+NO escribas recomendaciones. NO escribas análisis. SOLO la pregunta.`;
+  }
+
+  // ── Resultado final ──
+  return `Eres IteraDORA. Diagnóstico profundo nivel ${level} COMPLETADO. Responde en español.
+
+El usuario respondió las ${totalPracticas} prácticas. Calcula los aciertos (Sí = acierto) y muestra:
 
 === RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===
 CV: [aciertos]/${cats.CV} ([porcentaje]%)
@@ -262,20 +266,7 @@ AP: [aciertos]/${cats.AP} ([porcentaje]%)
 IS: [aciertos]/${cats.IS} ([porcentaje]%)
 IC: [aciertos]/${cats.IC} ([porcentaje]%)
 
-No agregues recomendaciones ni análisis después del bloque de resultados. Solo el bloque.
-
-Si el usuario escribe algo que no es Sí o No, responde: "Por favor, responde Sí o No a la pregunta actual."`;
-
-  // ── Instrucción dinámica según conteo REAL de respuestas ──
-  if (respuestasCount >= totalPracticas) {
-    base += `\n\n⚠️ INSTRUCCIÓN FINAL: El backend confirma que ya se respondieron las ${totalPracticas} prácticas. Muestra ÚNICAMENTE el bloque === RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===. PROHIBIDO hacer más preguntas.`;
-  } else if (respuestasCount === 0) {
-    base += `\n\n⚠️ INSTRUCCIÓN: El backend confirma que este es el INICIO del diagnóstico profundo. Empieza INMEDIATAMENTE con la Pregunta 1 de ${totalPracticas} [CV]. Sin introducciones.`;
-  } else {
-    base += `\n\n⚠️ INSTRUCCIÓN OBLIGATORIA: El backend confirma que se han respondido ${respuestasCount} de ${totalPracticas} prácticas. Ahora debes mostrar ÚNICAMENTE la Pregunta ${respuestasCount + 1} de ${totalPracticas}. Sigue el orden CV → BD → EC → AP → IS → IC. NO te saltes preguntas. NO muestres resultados hasta completar las ${totalPracticas}.`;
-  }
-
-  return base;
+Solo el bloque de resultados. Nada más.`;
 }
 
 function validarMensaje(messages: { role: string; content: string }[]): string | null {
