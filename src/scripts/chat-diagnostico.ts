@@ -50,12 +50,55 @@ function initChatDiagnostico() {
   // ─── DIAGNÓSTICO PROFUNDO ───
   let deepDiagnosticActive = false;
   let deepDiagnosticLevel = "";
-  let deepUltimaCategoria = "";
-  let deepRespuestasPorCategoria: Record<string, number> = {};
+  let deepCategoriaActual = "";
+  let deepPreguntaIdx = 0;
+  let deepTotalPreguntas = 0;
+  let deepRespuestasSi: Record<string, number> = {};
+  const DEEP_CATEGORIAS = ["CV", "BD", "EC", "AP", "IS", "IC"];
   const DEEP_PRACTICES: Record<string, Record<string, number>> = {
     Fundacional: { CV: 1, BD: 2, EC: 3, AP: 5, IS: 6, IC: 2 },
     Intermedio:  { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
     Avanzado:    { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
+  };
+
+  // Preguntas del diagnóstico profundo por categoría
+  const DEEP_PREGUNTAS: Record<string, string[]> = {
+    CV: [
+      "Tema: Sistema de Control de Versiones\n\nUn sistema de control de versiones como Git es la base fundamental de cualquier práctica DevOps.\n\n¿La organización utiliza un sistema de control de versiones como Git para gestionar todos sus repositorios de código?",
+      "Tema: Estrategia de Branching\n\nUna estrategia de branching definida facilita la colaboración y la integración continua entre los miembros del equipo.\n\n¿El equipo utiliza una estrategia de branching definida y documentada (como GitFlow, trunk-based o GitHub Flow)?",
+    ],
+    BD: [
+      "Tema: Automatización de Builds\n\nLa compilación automatizada elimina errores manuales y acelera el ciclo de desarrollo.\n\n¿El proceso de compilación (build) está completamente automatizado mediante scripts o herramientas CI?",
+      "Tema: Pipelines de Despliegue\n\nLos pipelines automatizados garantizan despliegues repetibles y predecibles en todos los entornos.\n\n¿Los despliegues a todos los entornos se realizan mediante pipelines automatizados sin intervención manual?",
+      "Tema: Infraestructura como Código\n\nIaC permite versionar, revisar y recrear infraestructura de forma confiable.\n\n¿Se utiliza Infraestructura como Código (Terraform, CloudFormation, Pulumi, etc.) como estándar en la organización?",
+    ],
+    EC: [
+      "Tema: Linters y Formateo\n\nLos linters ayudan a mantener un estilo de código consistente en todo el equipo.\n\n¿El equipo utiliza linters y formateadores automáticos configurados en el pipeline de CI?",
+      "Tema: Code Reviews\n\nLas revisiones de código mejoran la calidad y facilitan la transferencia de conocimiento.\n\n¿Son obligatorias las revisiones de código (code reviews) antes de fusionar cualquier cambio a la rama principal?",
+      "Tema: Estándares de Calidad\n\nLos estándares documentados aseguran que todo el equipo siga las mismas prácticas.\n\n¿Existen estándares de calidad de código documentados y conocidos por todo el equipo de desarrollo?",
+      "Tema: Análisis Estático\n\nEl análisis estático detecta bugs, vulnerabilidades y malas prácticas antes de que lleguen a producción.\n\n¿Se utilizan herramientas de análisis estático de código (SAST) integradas en el pipeline de CI?",
+    ],
+    AP: [
+      "Tema: Pruebas Unitarias\n\nLas pruebas unitarias son la primera línea de defensa contra regresiones.\n\n¿Se ejecutan pruebas unitarias automáticamente como parte del pipeline de CI?",
+      "Tema: Pruebas de Integración\n\nLas pruebas de integración verifican que los componentes funcionen correctamente en conjunto.\n\n¿El proyecto cuenta con pruebas de integración automatizadas que se ejecutan en cada build?",
+      "Tema: Cobertura de Código\n\nMedir la cobertura ayuda a identificar áreas del código que necesitan más pruebas.\n\n¿Se mide y monitorea la cobertura de pruebas con umbrales mínimos definidos?",
+      "Tema: Pruebas End-to-End\n\nLas pruebas E2E validan flujos completos desde la perspectiva del usuario.\n\n¿Existen pruebas end-to-end automatizadas que validen los flujos críticos de la aplicación?",
+      "Tema: Gestión de Datos de Prueba\n\nLos datos de prueba realistas y anonimizados mejoran la calidad de las pruebas.\n\n¿Se utilizan conjuntos de datos de prueba gestionados y mantenidos para pruebas automatizadas?",
+    ],
+    IS: [
+      "Tema: Escaneo de Dependencias\n\nLas dependencias vulnerables son una de las principales fuentes de riesgos de seguridad.\n\n¿Se realiza escaneo automático de dependencias en busca de vulnerabilidades conocidas (CVE)?",
+      "Tema: SAST en Pipeline\n\nEl análisis de seguridad estático detecta vulnerabilidades en el código propio.\n\n¿El pipeline de CI incluye herramientas SAST que detienen el build ante vulnerabilidades críticas?",
+      "Tema: Gestión de Secretos\n\nLos secretos en código fuente son un riesgo grave de seguridad.\n\n¿Se utiliza una herramienta de gestión de secretos (Vault, AWS Secrets Manager, etc.) para almacenar credenciales?",
+      "Tema: Auditorías de Seguridad\n\nLas auditorías periódicas ayudan a identificar brechas de seguridad antes que los atacantes.\n\n¿Se realizan auditorías de seguridad periódicas en el código y la infraestructura?",
+      "Tema: Respuesta a Incidentes\n\nUn proceso de respuesta definido minimiza el impacto de incidentes de seguridad.\n\n¿Existe un proceso documentado de respuesta a incidentes de seguridad?",
+      "Tema: Control de Acceso a Producción\n\nEl acceso restringido a producción reduce el riesgo de cambios no autorizados.\n\n¿Los accesos a entornos de producción están estrictamente controlados y auditados?",
+      "Tema: Principio de Mínimo Privilegio\n\nEl mínimo privilegio limita el daño potencial de una cuenta comprometida.\n\n¿Los pipelines y herramientas de CI/CD operan bajo el principio de mínimo privilegio?",
+    ],
+    IC: [
+      "Tema: CI en Cada Commit\n\nLa integración continua frecuente detecta problemas temprano en el ciclo de desarrollo.\n\n¿Se ejecuta el pipeline de CI automáticamente con cada push a las ramas principales?",
+      "Tema: Validación Automática\n\nLa validación automática asegura que cada cambio cumpla con los estándares antes de integrarse.\n\n¿El pipeline de CI incluye validación automática de builds, pruebas y análisis de calidad?",
+      "Tema: Notificaciones de Fallos\n\nLa notificación rápida de fallos permite al equipo reaccionar inmediatamente.\n\n¿Los pipelines notifican activamente al equipo cuando ocurre un fallo (chat, email, etc.)?",
+    ],
   };
 
   // Los botones Sí/No están ocultos hasta que se pulse "Comencemos"
@@ -580,8 +623,8 @@ function initChatDiagnostico() {
 
     // ── Contar Sí ──
     if (deepDiagnosticActive) {
-      if (content.includes(":Si") && deepUltimaCategoria) {
-        deepRespuestasPorCategoria[deepUltimaCategoria] = (deepRespuestasPorCategoria[deepUltimaCategoria] || 0) + 1;
+      if (content.toUpperCase() === "SÍ" || content.toUpperCase() === "SI") {
+        deepRespuestasSi[deepCategoriaActual] = (deepRespuestasSi[deepCategoriaActual] || 0) + 1;
       }
     } else {
       if (content.toUpperCase() === "SÍ" || content.toUpperCase() === "SI") respuestasSi++;
@@ -654,6 +697,15 @@ function initChatDiagnostico() {
       }
     }
 
+    // ── DIAGNÓSTICO PROFUNDO: avance 100% client-side ──
+    if (deepDiagnosticActive) {
+      deepPreguntaIdx++;
+      await delay(300);
+      mostrarSiguientePreguntaDeep();
+      isLoading = false;
+      return;
+    }
+
     isLoading = true;
     setButtonsLoading(true);
     addTypingIndicator();
@@ -679,31 +731,7 @@ function initChatDiagnostico() {
       // Limpiar artefactos del modelo en todas las respuestas
       fullReply = sanitizarTextoIA(fullReply);
 
-      // ── Diagnóstico Profundo ──
-      if (deepDiagnosticActive) {
-        if (esResultadoProfundo(fullReply)) {
-          deepDiagnosticActive = false;
-          addMessage("assistant", "✅ Diagnóstico profundo completado.");
-          await delay(500);
-          showDeepResultCard(fullReply);
-          state = "completed";
-          showButtons(false);
-          recContainer.classList.add("hidden");
-          deepContainer.classList.add("hidden");
-          btnContainer.classList.add("hidden");
-          messages.push({ role: "assistant", content: fullReply });
-        } else if (esPreguntaProfunda(fullReply)) {
-          deepUltimaCategoria = extraerCategoria(fullReply);
-          showButtons(true);
-          addMessage("assistant", limpiarPrefijoCat(fullReply));
-          messages.push({ role: "assistant", content: fullReply });
-        } else {
-          // No es pregunta ni resultado: ocultar botones (análisis o contenido final)
-          showButtons(false);
-          addMessage("assistant", limpiarPrefijoCat(fullReply));
-          messages.push({ role: "assistant", content: fullReply });
-        }
-      } else if (!fullReply) {
+      if (!fullReply) {
         const fallback = "Lo siento, no pude procesar tu respuesta.";
         addMessage("assistant", fallback);
         messages.push({ role: "assistant", content: fallback });
@@ -758,24 +786,89 @@ function initChatDiagnostico() {
     }
   }
 
-  btnSi.addEventListener("click", () => {
-    if (deepDiagnosticActive) {
-      sendMessage("[DEEP:" + deepDiagnosticLevel + "]:Si");
-    } else {
-      sendMessage("Sí");
-    }
-  });
-  btnNo.addEventListener("click", () => {
-    if (deepDiagnosticActive) {
-      sendMessage("[DEEP:" + deepDiagnosticLevel + "]:No");
-    } else {
-      sendMessage("No");
-    }
-  });
+  btnSi.addEventListener("click", () => sendMessage("Sí"));
+  btnNo.addEventListener("click", () => sendMessage("No"));
   btnRec.addEventListener("click", () => {
     if (isLoading) return;
     mostrarRecomendacionesLocales();
   });
+
+  function mostrarSiguientePreguntaDeep() {
+    const cats = DEEP_PRACTICES[deepDiagnosticLevel] || DEEP_PRACTICES["Intermedio"];
+    const preguntasCat = DEEP_PREGUNTAS[deepCategoriaActual] || [];
+    const maxPreguntasCat = Math.min(cats[deepCategoriaActual], preguntasCat.length);
+
+    if (deepPreguntaIdx >= maxPreguntasCat) {
+      // Avanzar a la siguiente categoría
+      const catIdx = DEEP_CATEGORIAS.indexOf(deepCategoriaActual);
+      const nextCatIdx = catIdx + 1;
+      if (nextCatIdx >= DEEP_CATEGORIAS.length) {
+        // Final del diagnóstico profundo
+        finalizarDiagnosticoProfundo();
+        return;
+      }
+      deepCategoriaActual = DEEP_CATEGORIAS[nextCatIdx];
+      deepPreguntaIdx = 0;
+    }
+
+    const pregunta = DEEP_PREGUNTAS[deepCategoriaActual][deepPreguntaIdx];
+    const totalCat = cats[deepCategoriaActual];
+    const texto = `[${deepCategoriaActual}] Pregunta ${deepPreguntaIdx + 1} de ${totalCat}:\n\n${pregunta}`;
+    addMessage("assistant", texto);
+    messages.push({ role: "assistant", content: texto });
+    scrollToBottom();
+  }
+
+  function finalizarDiagnosticoProfundo() {
+    deepDiagnosticActive = false;
+    state = "completed";
+    showButtons(false);
+    btnContainer.classList.add("hidden");
+    recContainer.classList.add("hidden");
+    deepContainer.classList.add("hidden");
+
+    const cats = DEEP_PRACTICES[deepDiagnosticLevel] || DEEP_PRACTICES["Intermedio"];
+    const resultados: Record<string, string> = {};
+    for (const cat of DEEP_CATEGORIAS) {
+      const total = cats[cat];
+      const si = deepRespuestasSi[cat] || 0;
+      const pct = total > 0 ? Math.round((si / total) * 100) : 0;
+      resultados[cat] = `${si}/${total} (${pct}%)`;
+    }
+
+    const puntajes = DEEP_CATEGORIAS.map((c) => {
+      const t = cats[c]; const s = deepRespuestasSi[c] || 0;
+      return { cat: c, pct: t > 0 ? Math.round((s / t) * 100) : 0 };
+    }).sort((a, b) => b.pct - a.pct);
+
+    const mejores = puntajes.slice(0, 2);
+    const peores = puntajes.slice(-2);
+
+    const nombresCat: Record<string, string> = {
+      CV: "Control de Versiones", BD: "Build & Deployment", EC: "Estándares de Código",
+      AP: "Automatización de Pruebas", IS: "Ingeniería de Seguridad", IC: "Integración Continua",
+    };
+
+    const fortalezas = mejores.map((p) =>
+      `- Excelente desempeño en ${nombresCat[p.cat]} (${p.pct}%). Las prácticas en esta área muestran madurez y consistencia.`
+    ).join("\n");
+    const oportunidades = peores.map((p) =>
+      `- ${nombresCat[p.cat]} (${p.pct}%) requiere atención prioritaria. Implementa mejoras graduales en esta categoría.`
+    ).join("\n");
+
+    const promedio = Math.round(puntajes.reduce((s, p) => s + p.pct, 0) / puntajes.length);
+    const conclusion = promedio >= 70
+      ? `Tu nivel DevOps es sólido (${promedio}%). Las áreas fuertes están en ${nombresCat[mejores[0].cat]} y ${nombresCat[mejores[1].cat]}. Enfoca tus esfuerzos en ${nombresCat[peores[0].cat]} para alcanzar la excelencia.`
+      : promedio >= 40
+        ? `Tu organización está en un nivel intermedio (${promedio}%). Las prácticas de ${nombresCat[mejores[0].cat]} destacan positivamente, pero ${nombresCat[peores[0].cat]} necesita un plan de acción claro.`
+        : `Tu organización está en nivel fundacional (${promedio}%). Prioriza ${nombresCat[peores[0].cat]} y ${nombresCat[peores[1].cat]} como base, luego avanza hacia las demás categorías.`;
+
+    const marcadores = Object.entries(resultados).map(([k, v]) => `${k}: ${v}`).join("\n");
+    const markdown = `=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===\n${marcadores}\n\n**Fortalezas**\n${fortalezas}\n\n**Oportunidades de Mejora**\n${oportunidades}\n\n**Conclusión**\n${conclusion}`;
+
+    addMessage("assistant", "✅ Diagnóstico profundo completado.");
+    setTimeout(() => showDeepResultCard(markdown), 600);
+  }
 
   btnDeep.addEventListener("click", () => {
     showButtons(false);
@@ -785,16 +878,21 @@ function initChatDiagnostico() {
 
     deepDiagnosticLevel = computeLevel();
     deepDiagnosticActive = true;
-    deepRespuestasPorCategoria = {};
-    deepUltimaCategoria = "";
+    deepCategoriaActual = "CV";
+    deepPreguntaIdx = 0;
+    deepRespuestasSi = {};
 
-    // Limpiar historial para que la IA empiece fresca el diagnóstico profundo
     messages = [];
     state = "inProgress";
     resultadoMostrado = false;
 
-    addMessage("assistant", "Iniciando diagnóstico profundo nivel " + deepDiagnosticLevel + "...");
-    sendMessage("[DEEP:" + deepDiagnosticLevel + "]:INICIAR");
+    addMessage("assistant", "🔍 Iniciando diagnóstico profundo nivel " + deepDiagnosticLevel + "...");
+    setTimeout(() => {
+      mostrarSiguientePreguntaDeep();
+      btnSi.disabled = false;
+      btnNo.disabled = false;
+      btnContainer.classList.remove("hidden");
+    }, 600);
   });
 
   btnVolverChat.addEventListener("click", () => {
