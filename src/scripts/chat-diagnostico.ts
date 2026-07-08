@@ -525,7 +525,7 @@ function initChatDiagnostico() {
 
   async function sendMessage(respuesta: string) {
     const content = respuesta;
-    if (!content || isLoading || state === "completed") return;
+    if (!content || isLoading) return;
 
     // ── Contar Sí ──
     if (deepDiagnosticActive) {
