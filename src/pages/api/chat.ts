@@ -258,17 +258,23 @@ NO escribas recomendaciones. NO escribas análisis. SOLO la pregunta.`;
   // ── Resultado final ──
   return `Eres IteraDORA. Diagnóstico profundo nivel ${level} COMPLETADO. Responde en español.
 
-El usuario respondió las ${totalPracticas} prácticas. Calcula los aciertos (Sí = acierto) y muestra:
+El usuario respondió las ${totalPracticas} prácticas. Calcula los aciertos (Sí = acierto) y devuelve EXACTAMENTE este formato, carácter por carácter:
 
 === RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===
-CV: [aciertos]/${cats.CV} ([porcentaje]%)
-BD: [aciertos]/${cats.BD} ([porcentaje]%)
-EC: [aciertos]/${cats.EC} ([porcentaje]%)
-AP: [aciertos]/${cats.AP} ([porcentaje]%)
-IS: [aciertos]/${cats.IS} ([porcentaje]%)
-IC: [aciertos]/${cats.IC} ([porcentaje]%)
+CV: [aciertos]/1 ([porcentaje]%)
+BD: [aciertos]/11 ([porcentaje]%)
+EC: [aciertos]/10 ([porcentaje]%)
+AP: [aciertos]/19 ([porcentaje]%)
+IS: [aciertos]/12 ([porcentaje]%)
+IC: [aciertos]/11 ([porcentaje]%)
 
-Solo el bloque de resultados. Nada más.`;
+IMPORTANTE:
+- NO uses markdown (sin asteriscos, sin negritas, sin bullets).
+- NO escribas texto antes ni después del bloque.
+- NO incluyas recomendaciones, análisis, ni conclusiones.
+- SOLO el bloque === RESULTADOS === con las 6 líneas de categorías.
+- Reemplaza [aciertos] y [porcentaje]% con los valores reales calculados.
+- Cada línea de categoría DEBE empezar exactamente con las siglas (CV:, BD:, etc.) sin espacios ni asteriscos antes.`;
 }
 
 function validarMensaje(messages: { role: string; content: string }[]): string | null {

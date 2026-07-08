@@ -19,7 +19,6 @@ function initChatDiagnostico() {
   const btnDeep = document.getElementById("btn-deep") as HTMLButtonElement;
   const deepResultCard = document.getElementById("deep-result-card")!;
   const deepResultContent = document.getElementById("deep-result-content")!;
-  const btnVolverDeep = document.getElementById("btn-volver-deep")!;
   const btnSalirDeep = document.getElementById("btn-salir-deep")!;
 
   const TOTAL_PREGUNTAS = 11;
@@ -323,18 +322,34 @@ function initChatDiagnostico() {
 
   function esResultadoProfundo(content: string): boolean {
     const upper = content.toUpperCase();
-    // Detectar bloque de métricas o informe final completo
-    return upper.includes("=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===")
-      || (upper.includes("RESULTADOS DEL DIAGNÓSTICO") && (upper.includes("CV:") || upper.includes("BD:")))
-      || (upper.includes("RESEÑA") && upper.includes("CONCLUSI"))
-      || (upper.includes("RECOMENDACIONES") && (upper.includes("CV:") || upper.includes("BD:")));
+    // Detectar bloque de métricas en cualquier formato (estricto o markdown)
+    if (upper.includes("=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===")) return true;
+    if (upper.includes("**RESULTADOS DEL DIAGNÓSTICO") || upper.includes("RESULTADOS DEL DIAGNÓSTICO")) {
+      // Verificar que contenga al menos 2 categorías DORA con puntuaciones
+      const catMatches = content.match(/(?:^|\n)\s*(?:\*{1,2}\s*)?(CV|BD|EC|AP|IS|IC)\s*(?:\([^)]+\))?\*{0,2}\s*:\s*\d+\/\d+/gim);
+      if (catMatches && catMatches.length >= 2) return true;
+    }
+    // Detectar por patrones de puntuación DORA (mínimo 2 categorías con score)
+    const scorePattern = /(?:^|\n)\s*(?:\*{0,2}\s*)?(CV|BD|EC|AP|IS|IC)\s*(?:\([^)]+\))?\*{0,2}\s*:\s*\d+\/\d+\s*\(\d+(?:\.\d+)?%\)/gim;
+    const scoreMatches = content.match(scorePattern);
+    if (scoreMatches && scoreMatches.length >= 2) return true;
+    // Fallback: reseña + conclusión
+    if (upper.includes("RESEÑA") && upper.includes("CONCLUSI")) return true;
+    // Fallback: recomendaciones con categorías
+    if (upper.includes("RECOMENDACIONES") && scoreMatches && scoreMatches.length >= 1) return true;
+    return false;
   }
 
   function parsearResultadosProfundos(content: string): Record<string, string> {
     const resultados: Record<string, string> = {};
     const lines = content.split("\n");
     for (const line of lines) {
-      const match = line.match(/^(CV|BD|EC|AP|IS|IC):\s*(\d+\/\d+\s*\(\d+%\))/i);
+      // Formato estricto: CV: 0/1 (0%)
+      let match = line.match(/^(CV|BD|EC|AP|IS|IC):\s*(\d+\/\d+\s*\(\d+(?:\.\d+)?%\))/i);
+      if (!match) {
+        // Formato markdown con bullet: * **CV (Control de Versiones)**: 0/1 (0%)
+        match = line.match(/^[\s\*\-+]*\*{0,2}(CV|BD|EC|AP|IS|IC)\s*(?:\([^)]+\))?\*{0,2}\s*:\s*(\d+\/\d+\s*\(\d+(?:\.\d+)?%\))/i);
+      }
       if (match) {
         resultados[match[1].toUpperCase()] = match[2].trim();
       }
@@ -547,11 +562,9 @@ function initChatDiagnostico() {
           showDeepResultCard(fullReply);
           state = "completed";
           showButtons(false);
-          // Solo "Volver al inicio" visible
           recContainer.classList.add("hidden");
           deepContainer.classList.add("hidden");
           btnContainer.classList.add("hidden");
-          document.getElementById("btn-volver-deep")!.classList.add("hidden");
           messages.push({ role: "assistant", content: fullReply });
         } else if (esPreguntaProfunda(fullReply)) {
           deepUltimaCategoria = extraerCategoria(fullReply);
@@ -667,16 +680,44 @@ function initChatDiagnostico() {
     window.location.href = "/";
   });
 
-  btnVolverDeep.addEventListener("click", () => {
-    if (state === "completed") return;
-    deepResultCard.classList.add("hidden");
-    chatDisclaimer.classList.remove("hidden");
-    messagesEl.scrollIntoView({ behavior: "smooth" });
-  });
-
   btnSalirDeep.addEventListener("click", () => {
     window.location.href = "/";
   });
+
+  // ─── PREVIEW: ?preview en la URL muestra el dashboard con datos de ejemplo ───
+  if (window.location.search.includes("preview")) {
+    const previewData = `=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===
+CV: 1/2 (50%)
+BD: 8/11 (72.73%)
+EC: 7/10 (70%)
+AP: 12/19 (63.16%)
+IS: 9/12 (75%)
+IC: 5/11 (45.45%)
+
+**Fortalezas**
+- Excelente desempeño en Ingeniería de Seguridad (IS) con un 75% de adopción de prácticas como SAST, escaneo de dependencias y secrets management.
+- Build & Deployment (BD) muestra madurez con pipelines automatizados y despliegues consistentes.
+- Estándares de Código (EC) bien establecidos con linters y revisiones de pares.
+
+**Oportunidades**
+- Integración Continua (IC) es el área más débil con solo 45% — se recomienda implementar CI/CD con pruebas automáticas en cada commit.
+- Control de Versiones (CV) necesita atención inmediata: solo 1 de 2 prácticas adoptadas. Estrategia de branching y code review formal pendientes.
+- Automatización de Pruebas (AP) en 63% — aumentar cobertura de tests unitarios y de integración.
+
+**Conclusión**
+El nivel de madurez DevOps general es intermedio (62%). Las áreas de seguridad y despliegue están sólidas, pero se requiere un plan de acción urgente en control de versiones e integración continua para alcanzar un nivel avanzado en los próximos 6 meses.`;
+
+    setTimeout(() => {
+      state = "inProgress";
+      deepDiagnosticActive = true;
+      showDeepResultCard(previewData);
+      state = "completed";
+      showButtons(false);
+      recContainer.classList.add("hidden");
+      (document.getElementById("deep-container") as HTMLElement).classList.add("hidden");
+      (document.getElementById("btn-container") as HTMLElement).classList.add("hidden");
+    }, 300);
+  }
 
 }
 
