@@ -1,3 +1,5 @@
+import { marked } from "marked";
+
 function initChatDiagnostico() {
   // Backend: endpoint de Astro SSR con Bedrock Claude integrado
   const API_URL = "/api/chat";
@@ -17,19 +19,16 @@ function initChatDiagnostico() {
   const btnDeep = document.getElementById("btn-deep") as HTMLButtonElement;
   const deepResultCard = document.getElementById("deep-result-card")!;
   const deepResultContent = document.getElementById("deep-result-content")!;
-  const btnVolverDeep = document.getElementById("btn-volver-deep")!;
   const btnSalirDeep = document.getElementById("btn-salir-deep")!;
 
   const TOTAL_PREGUNTAS = 11;
   const btnComenzar = document.getElementById("btn-comenzar") as HTMLButtonElement;
-  const bubblePregunta1 = document.getElementById("bubble-pregunta-1")!;
 
+  type DiagnosticState = "idle" | "inProgress" | "completed";
+  let state: DiagnosticState = "idle";
   let messages: { role: string; content: string }[] = [];
   let isLoading = false;
-  let diagnosticoFinalizado = false;
-  let botonesVisibles = false;
   let resultadoMostrado = false;
-  let chatTerminado = false;
   let respuestasSi = 0;
 
   // ─── DIAGNÓSTICO PROFUNDO ───
@@ -42,28 +41,36 @@ function initChatDiagnostico() {
     Intermedio:  { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
     Avanzado:    { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
   };
-  let deepCategoriasCompletadas = 0;
-  let deepDiagnosticoFinalizado = false;
 
-  // Los botones Sí/No y Pregunta 1 están ocultos hasta que se pulse "Comencemos"
+  // Los botones Sí/No están ocultos hasta que se pulse "Comencemos"
   btnSi.disabled = true;
   btnNo.disabled = true;
-  botonesVisibles = false;
 
   const comenzarContainer = document.getElementById("comenzar-container")!;
 
-  btnComenzar.addEventListener("click", () => {
+  btnComenzar.addEventListener("click", async () => {
     btnComenzar.disabled = true;
     btnComenzar.textContent = "Comenzando...";
-    setTimeout(() => {
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [] }),
+      });
+      const data = await res.json();
+      const content = data.message?.content || "";
       comenzarContainer.classList.add("hidden");
-      bubblePregunta1.classList.remove("hidden");
+      addMessage("assistant", content);
+      messages.push({ role: "assistant", content });
       btnContainer.classList.remove("hidden");
       btnSi.disabled = false;
       btnNo.disabled = false;
-      botonesVisibles = true;
+      state = "inProgress";
       scrollToBottom();
-    }, 400);
+    } catch (e) {
+      btnComenzar.disabled = false;
+      btnComenzar.textContent = "Reintentar";
+    }
   });
 
   function scrollToBottom() {
@@ -74,6 +81,136 @@ function initChatDiagnostico() {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  function renderDashboard(markdown: string): HTMLElement {
+    const container = document.createElement("div");
+    container.className = "dashboard-recomendaciones";
+
+    // Parsear secciones: FORTALEZAS, OPORTUNIDADES, CONCLUSIÓN
+    const sections = parseSecciones(markdown);
+
+    // Encabezado del dashboard
+    const header = document.createElement("div");
+    header.className = "dashboard-header";
+    header.innerHTML = '<div class="dashboard-icon">📊</div><div><h3>Informe de Diagnóstico</h3><p>Análisis detallado de madurez DevOps</p></div>';
+    container.appendChild(header);
+
+    // Fortalezas
+    if (sections.fortalezas) {
+      const sec = document.createElement("div");
+      sec.className = "dashboard-section";
+      sec.innerHTML = '<h4 class="section-title fortalezas"><span class="section-icon">✓</span> Fortalezas Identificadas</h4>';
+      const body = document.createElement("div");
+      body.className = "section-body";
+      body.innerHTML = marked.parse(sections.fortalezas) as string;
+      // Convertir cada <li> en una card
+      body.querySelectorAll("li").forEach((li) => {
+        li.className = "dashboard-card card-fortaleza";
+      });
+      sec.appendChild(body);
+      container.appendChild(sec);
+    }
+
+    // Oportunidades
+    if (sections.oportunidades) {
+      const sec = document.createElement("div");
+      sec.className = "dashboard-section";
+      sec.innerHTML = '<h4 class="section-title oportunidades"><span class="section-icon">⚡</span> Oportunidades de Mejora</h4>';
+      const body = document.createElement("div");
+      body.className = "section-body";
+      body.innerHTML = marked.parse(sections.oportunidades) as string;
+      body.querySelectorAll("li").forEach((li, i) => {
+        li.className = "dashboard-card card-oportunidad";
+        // Prioridad según orden
+      });
+      sec.appendChild(body);
+      container.appendChild(sec);
+    }
+
+    // Conclusión
+    if (sections.conclusion) {
+      const sec = document.createElement("div");
+      sec.className = "dashboard-section conclusion-section";
+      sec.innerHTML = '<h4 class="section-title conclusion"><span class="section-icon">💡</span> Conclusión y Próximos Pasos</h4>';
+      const body = document.createElement("div");
+      body.className = "section-body conclusion-body";
+      body.innerHTML = marked.parse(sections.conclusion) as string;
+      sec.appendChild(body);
+      container.appendChild(sec);
+    }
+
+    return container;
+  }
+
+  function parseSecciones(md: string): { fortalezas: string; oportunidades: string; conclusion: string } {
+    let fortalezas = "";
+    let oportunidades = "";
+    let conclusion = "";
+
+    // Normalizar: quitar ** de encabezados
+    let text = md.replace(/\*\*(FORTALEZAS?|OPORTUNIDADES?\s*(DE\s*MEJORA)?|CONCLUSI[ÓO]N|RECOMENDACIONES?)\*\*/gi, "### $1");
+    text = text.replace(/^#+\s*(FORTALEZAS?|OPORTUNIDADES?\s*(DE\s*MEJORA)?|CONCLUSI[ÓO]N|RECOMENDACIONES?)/gim, "### $1");
+
+    // Separar por ### encabezados
+    const parts = text.split(/^###\s+/gim);
+    let currentSection = "";
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i].trim();
+      if (!part) continue;
+
+      const lines = part.split("\n");
+      const firstLine = lines[0].toUpperCase().trim();
+
+      if (firstLine.includes("FORTALEZA")) {
+        currentSection = "fortalezas";
+        fortalezas = lines.slice(1).join("\n").trim();
+      } else if (firstLine.includes("OPORTUNIDAD") || firstLine.includes("MEJORA")) {
+        currentSection = "oportunidades";
+        oportunidades = lines.slice(1).join("\n").trim();
+      } else if (firstLine.includes("CONCLUSI")) {
+        currentSection = "conclusion";
+        conclusion = lines.slice(1).join("\n").trim();
+      } else if (currentSection === "fortalezas") {
+        fortalezas += "\n" + part;
+      } else if (currentSection === "oportunidades") {
+        oportunidades += "\n" + part;
+      } else if (currentSection === "conclusion") {
+        conclusion += "\n" + part;
+      }
+    }
+
+    // Si no se detectaron secciones, dividir por patrones alternativos
+    if (!fortalezas && !oportunidades) {
+      // Intentar split por líneas ALL CAPS
+      const altParts = text.split(/^([A-ZÁÉÍÓÚÑ\s]{5,})$/gim);
+      let altSection = "";
+      for (let i = 0; i < altParts.length; i++) {
+        const p = altParts[i].trim();
+        if (!p) continue;
+        if (/^[A-ZÁÉÍÓÚÑ\s]{5,}$/.test(p)) {
+          const upper = p.toUpperCase();
+          if (upper.includes("FORTALEZA")) altSection = "fortalezas";
+          else if (upper.includes("OPORTUNIDAD") || upper.includes("MEJORA")) altSection = "oportunidades";
+          else if (upper.includes("CONCLUSI")) altSection = "conclusion";
+          else altSection = "";
+        } else if (altSection === "fortalezas") fortalezas += p + "\n";
+        else if (altSection === "oportunidades") oportunidades += p + "\n";
+        else if (altSection === "conclusion") conclusion += p + "\n";
+      }
+    }
+
+    // Si sigue sin detectar, usar todo como conclusión
+    if (!fortalezas && !oportunidades && !conclusion) {
+      conclusion = md;
+    }
+
+    return {
+      fortalezas: fortalezas.trim(),
+      oportunidades: oportunidades.trim(),
+      conclusion: conclusion.trim(),
+    };
   }
 
   function addMessage(role: "user" | "assistant", content: string) {
@@ -114,7 +251,6 @@ function initChatDiagnostico() {
       btnContainer.classList.remove("hidden");
       btnSi.disabled = false;
       btnNo.disabled = false;
-      botonesVisibles = true;
     } else {
       btnContainer.classList.add("hidden");
       recContainer.classList.add("hidden");
@@ -123,7 +259,6 @@ function initChatDiagnostico() {
       btnNo.disabled = true;
       btnRec.disabled = true;
       btnDeep.disabled = true;
-      botonesVisibles = false;
     }
   }
 
@@ -133,18 +268,16 @@ function initChatDiagnostico() {
     deepContainer.classList.remove("hidden");
     btnRec.disabled = false;
     btnDeep.disabled = false;
-    botonesVisibles = true;
   }
 
   function showRecButton() {
     btnContainer.classList.add("hidden");
     recContainer.classList.remove("hidden");
     btnRec.disabled = false;
-    botonesVisibles = true;
   }
 
   function setButtonsLoading(loading: boolean) {
-    if (!botonesVisibles) return;
+    if (state === "completed") return;
     btnSi.disabled = loading;
     btnNo.disabled = loading;
     btnRec.disabled = loading;
@@ -162,7 +295,7 @@ function initChatDiagnostico() {
     else return "Avanzado";
   }
 
-  function showResultCard(_content: string) {
+  function showResultCard() {
     const porcentaje = Math.round((respuestasSi / TOTAL_PREGUNTAS) * 100);
     const nivel = computeLevel();
 
@@ -188,14 +321,35 @@ function initChatDiagnostico() {
   }
 
   function esResultadoProfundo(content: string): boolean {
-    return content.includes("=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===");
+    const upper = content.toUpperCase();
+    // Detectar bloque de métricas en cualquier formato (estricto o markdown)
+    if (upper.includes("=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===")) return true;
+    if (upper.includes("**RESULTADOS DEL DIAGNÓSTICO") || upper.includes("RESULTADOS DEL DIAGNÓSTICO")) {
+      // Verificar que contenga al menos 2 categorías DORA con puntuaciones
+      const catMatches = content.match(/(?:^|\n)\s*(?:\*{1,2}\s*)?(CV|BD|EC|AP|IS|IC)\s*(?:\([^)]+\))?\*{0,2}\s*:\s*\d+\/\d+/gim);
+      if (catMatches && catMatches.length >= 2) return true;
+    }
+    // Detectar por patrones de puntuación DORA (mínimo 2 categorías con score)
+    const scorePattern = /(?:^|\n)\s*(?:\*{0,2}\s*)?(CV|BD|EC|AP|IS|IC)\s*(?:\([^)]+\))?\*{0,2}\s*:\s*\d+\/\d+\s*\(\d+(?:\.\d+)?%\)/gim;
+    const scoreMatches = content.match(scorePattern);
+    if (scoreMatches && scoreMatches.length >= 2) return true;
+    // Fallback: reseña + conclusión
+    if (upper.includes("RESEÑA") && upper.includes("CONCLUSI")) return true;
+    // Fallback: recomendaciones con categorías
+    if (upper.includes("RECOMENDACIONES") && scoreMatches && scoreMatches.length >= 1) return true;
+    return false;
   }
 
   function parsearResultadosProfundos(content: string): Record<string, string> {
     const resultados: Record<string, string> = {};
     const lines = content.split("\n");
     for (const line of lines) {
-      const match = line.match(/^(CV|BD|EC|AP|IS|IC):\s*(\d+\/\d+\s*\(\d+%\))/i);
+      // Formato estricto: CV: 0/1 (0%)
+      let match = line.match(/^(CV|BD|EC|AP|IS|IC):\s*(\d+\/\d+\s*\(\d+(?:\.\d+)?%\))/i);
+      if (!match) {
+        // Formato markdown con bullet: * **CV (Control de Versiones)**: 0/1 (0%)
+        match = line.match(/^[\s\*\-+]*\*{0,2}(CV|BD|EC|AP|IS|IC)\s*(?:\([^)]+\))?\*{0,2}\s*:\s*(\d+\/\d+\s*\(\d+(?:\.\d+)?%\))/i);
+      }
       if (match) {
         resultados[match[1].toUpperCase()] = match[2].trim();
       }
@@ -203,61 +357,126 @@ function initChatDiagnostico() {
     return resultados;
   }
 
-  function showDeepResultCard(resultados: Record<string, string>) {
-    const catNames: Record<string, string> = {
-      CV: "Control de Versiones",
-      BD: "Build & Deploy",
-      EC: "Código y Estándares",
-      AP: "Automatización de Pruebas",
-      IS: "Seguridad",
-      IC: "Integración Continua"
+  function renderDeepDashboard(markdown: string) {
+    const resultados = parsearResultadosProfundos(markdown);
+    const dashboard = document.createElement("div");
+    dashboard.className = "deep-dashboard";
+
+    // ─── Encabezado ───
+    const header = document.createElement("div");
+    header.className = "deep-header";
+    header.innerHTML = '<div class="deep-header-icon">◆</div><div><h3>Resultados del Diagnóstico Profundo</h3><p>Análisis detallado por categoría DORA</p></div>';
+    dashboard.appendChild(header);
+
+    // ─── Métricas ───
+    const metricsGrid = document.createElement("div");
+    metricsGrid.className = "deep-metrics-grid";
+
+    const catConfig: Record<string, { name: string; icon: string }> = {
+      CV: { name: "Control de Versiones", icon: "🔀" },
+      BD: { name: "Build & Deployment", icon: "⚙️" },
+      EC: { name: "Estándares de Código", icon: "📋" },
+      AP: { name: "Automatización de Pruebas", icon: "🧪" },
+      IS: { name: "Ingeniería de Seguridad", icon: "🔒" },
+      IC: { name: "Integración Continua", icon: "🔄" },
     };
     const categories = ["CV", "BD", "EC", "AP", "IS", "IC"];
-    let html = '<div class="flex flex-col gap-2 text-sm">';
+
     for (const cat of categories) {
-      const score = resultados[cat] || "0/0 (0%)";
-      html += '<div class="flex justify-between bg-[#F7FAFC] dark:bg-[#001C26] px-4 py-3 rounded-xl"><span class="text-gray-500 dark:text-gray-400">' + escapeHtml(catNames[cat] || cat) + '</span><span class="font-bold text-[#3E7CB5]">' + escapeHtml(score) + '</span></div>';
+      const scoreStr = resultados[cat] || "0/0 (0%)";
+      const match = scoreStr.match(/(\d+)\/(\d+)\s*\((\d+(?:\.\d+)?)%\)/);
+      const correct = match ? parseInt(match[1]) : 0;
+      const total = match ? parseInt(match[2]) : 1;
+      const pct = match ? parseFloat(match[3]) : 0;
+      const cfg = catConfig[cat] || { name: cat, icon: "📊" };
+
+      let colorClass = "deep-red";
+      if (pct >= 70) colorClass = "deep-green";
+      else if (pct >= 40) colorClass = "deep-amber";
+
+      const card = document.createElement("div");
+      card.className = "deep-metric-card";
+      card.innerHTML = `
+        <div class="deep-metric-top">
+          <span class="deep-metric-icon">${cfg.icon}</span>
+          <div class="deep-metric-info">
+            <span class="deep-metric-name">${escapeHtml(cfg.name)}</span>
+            <span class="deep-metric-tag">${cat}</span>
+          </div>
+          <span class="deep-metric-pct ${colorClass}">${pct.toFixed(0)}%</span>
+        </div>
+        <div class="deep-progress-bar">
+          <div class="deep-progress-fill ${colorClass}" style="width:${Math.min(100, pct)}%"></div>
+        </div>
+        <div class="deep-metric-score">${correct} de ${total} prácticas</div>`;
+      metricsGrid.appendChild(card);
     }
-    html += '</div>';
-    deepResultContent.innerHTML = html;
+    dashboard.appendChild(metricsGrid);
+
+    // ─── Extraer texto post-métricas: reseña, conclusión, recomendaciones ───
+    const postMetrics = markdown.split(/=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===/i)[1] || markdown;
+    const allLines = postMetrics.split("\n");
+    const scoreLines: string[] = [];
+    const otherLines: string[] = [];
+    let scoresSection = true;
+    for (const line of allLines) {
+      const t = line.trim();
+      if (!t) continue;
+      if (/^(CV|BD|EC|AP|IS|IC):\s*\d+\/\d+/.test(t)) {
+        scoreLines.push(t);
+      } else if (scoresSection && /^\w{2}:\s*\d+\/\d+/.test(t)) {
+        scoreLines.push(t);
+      } else {
+        scoresSection = false;
+        otherLines.push(t);
+      }
+    }
+
+    if (otherLines.length > 0) {
+      const fullText = otherLines.join("\n");
+      const sections = parseSecciones(fullText);
+
+      // Reseña / Análisis
+      if (sections.fortalezas || sections.oportunidades) {
+        if (sections.fortalezas) {
+          const sec = document.createElement("div");
+          sec.className = "deep-analysis";
+          sec.innerHTML = '<h4>📊 Reseña de Resultados</h4><div class="deep-analysis-body">' + (marked.parse(sections.fortalezas) as string) + '</div>';
+          dashboard.appendChild(sec);
+        }
+        if (sections.oportunidades) {
+          const sec = document.createElement("div");
+          sec.className = "deep-analysis";
+          sec.innerHTML = '<h4>💡 Recomendaciones</h4><div class="deep-analysis-body">' + (marked.parse(sections.oportunidades) as string) + '</div>';
+          dashboard.appendChild(sec);
+        }
+      } else {
+        // Sin secciones claras: mostrar todo junto como análisis
+        const sec = document.createElement("div");
+        sec.className = "deep-analysis";
+        sec.innerHTML = '<h4>📊 Análisis y Recomendaciones</h4><div class="deep-analysis-body">' + (marked.parse(fullText) as string) + '</div>';
+        dashboard.appendChild(sec);
+      }
+
+      // Conclusión
+      if (sections.conclusion) {
+        const sec = document.createElement("div");
+        sec.className = "deep-analysis conclusion-section";
+        sec.innerHTML = '<h4>🎯 Conclusión</h4><div class="conclusion-body">' + (marked.parse(sections.conclusion) as string) + '</div>';
+        dashboard.appendChild(sec);
+      }
+    }
+
+    return dashboard;
+  }
+
+  function showDeepResultCard(content: string) {
+    const dashboard = renderDeepDashboard(content);
+    deepResultContent.innerHTML = "";
+    deepResultContent.appendChild(dashboard);
     deepResultCard.classList.remove("hidden");
     chatDisclaimer.classList.add("hidden");
     deepResultCard.scrollIntoView({ behavior: "smooth" });
-  }
-
-  function esPaso2(content: string): boolean {
-    return content.includes("listo para comenzar") && content.includes("- ");
-  }
-
-  function splitPaso2(content: string): string[] {
-    const lines = content.split("\n");
-    const greeting: string[] = [],
-      bullets: string[] = [],
-      closing: string[] = [];
-    let section: "greeting" | "bullets" | "closing" = "greeting";
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      if (trimmed.startsWith("-")) {
-        section = "bullets";
-        bullets.push(trimmed);
-      } else if (section === "bullets" && trimmed.startsWith("¿")) {
-        section = "closing";
-        closing.push(trimmed);
-      } else if (section === "closing") {
-        closing.push(trimmed);
-      } else {
-        greeting.push(trimmed);
-      }
-    }
-    const parts: string[] = [];
-    const g = greeting.join("\n");
-    if (g) parts.push(g);
-    const b = bullets.join("\n");
-    if (b) parts.push(b);
-    const c = closing.join("\n");
-    if (c) parts.push(c);
-    return parts.length >= 2 ? parts : [content];
   }
 
   function esPregunta(content: string): boolean {
@@ -282,43 +501,17 @@ function initChatDiagnostico() {
     return upper.includes("RESULTADO DEL DIAGN") && (upper.includes("NIVEL:") || upper.includes("NIVEL "));
   }
 
-  function splitResultado(content: string): string[] {
-    const parts: string[] = [];
-    const introMatch = content.match(/^([\s\S]*?)RESULTADO DEL DIAGNÓSTICO:/i);
-    if (introMatch && introMatch[1].trim()) parts.push(introMatch[1].trim());
-    const bloqueMatch = content.match(/(RESULTADO DEL DIAGNÓSTICO:[\s\S]*?Rangos: [^\n]+)/i);
-    if (bloqueMatch) {
-      parts.push(bloqueMatch[1].trim());
-      const restante = content
-        .substring(content.indexOf(bloqueMatch[1]) + bloqueMatch[1].length)
-        .trim();
-      if (restante) parts.push(restante);
-    }
-    return parts.length >= 2 ? parts : [content];
-  }
-
-  /** Limpia instrucciones del sistema que el modelo pequeño pueda escupir sin querer */
+  /** Limpia artefactos del modelo (firmas sueltas, instrucciones filtradas) */
   function sanitizarTextoIA(texto: string): string {
     return texto
-      .replace(/Si crees que el usuario[\s\S]*?importante:[\s\S]*?puntaje\.?/gi, "")
-      .replace(/IMPORTANTE:?\s*No inventes?[\s\S]*?puntaje\.?/gi, "")
-      .replace(/Despu[eé]s de dar recomendaciones[\s\S]*?\./gi, "")
-      .replace(/Si te piden recomendaciones[\s\S]*?\./gi, "")
-      .replace(/PREGUNTAS\s*\(hazlas en orden[^)]*\):?\s*/gi, "")
-      .replace(/REGLAS?:?[\s\S]*?(?=\.|\n|$)/gi, "")
-      .replace(/FLUJO:?[\s\S]*?(?=\.|\n|$)/gi, "")
-      .replace(/PASO \d[^:]*:[\s\S]*?(?=\n\n|\n\d|\n¿|$)/gi, "")
-      .replace(/Off-topic:[\s\S]*?(?=\.|\n|$)/gi, "")
-      // Limpiar "IA" suelto y otras firmas que el modelo pueda inventar
       .replace(/^IA\s*$/gim, "")
-      .replace(/^Asistente:?\s*$/gim, "")
-      .replace(/^Respuesta:?\s*$/gim, "")
+      .replace(/^(Asistente|Respuesta):?\s*$/gim, "")
       .trim();
   }
 
   async function sendMessage(respuesta: string) {
     const content = respuesta;
-    if (!content || isLoading || chatTerminado) return;
+    if (!content || isLoading || state === "completed") return;
 
     // ── Contar Sí ──
     if (deepDiagnosticActive) {
@@ -363,15 +556,15 @@ function initChatDiagnostico() {
       // ── Diagnóstico Profundo ──
       if (deepDiagnosticActive) {
         if (esResultadoProfundo(fullReply)) {
-          deepDiagnosticoFinalizado = true;
           deepDiagnosticActive = false;
-          const resultados = parsearResultadosProfundos(fullReply);
-          addMessage("assistant", "Diagnóstico profundo completado. Estos son tus resultados por categoría:");
+          addMessage("assistant", "✅ Diagnóstico profundo completado.");
           await delay(500);
-          showDeepResultCard(resultados);
-          chatTerminado = true;
-          diagnosticoFinalizado = true;
+          showDeepResultCard(fullReply);
+          state = "completed";
           showButtons(false);
+          recContainer.classList.add("hidden");
+          deepContainer.classList.add("hidden");
+          btnContainer.classList.add("hidden");
           messages.push({ role: "assistant", content: fullReply });
         } else if (esPreguntaProfunda(fullReply)) {
           deepUltimaCategoria = extraerCategoria(fullReply);
@@ -379,6 +572,8 @@ function initChatDiagnostico() {
           addMessage("assistant", limpiarPrefijoCat(fullReply));
           messages.push({ role: "assistant", content: fullReply });
         } else {
+          // No es pregunta ni resultado: ocultar botones (análisis o contenido final)
+          showButtons(false);
           addMessage("assistant", limpiarPrefijoCat(fullReply));
           messages.push({ role: "assistant", content: fullReply });
         }
@@ -386,10 +581,6 @@ function initChatDiagnostico() {
         const fallback = "Lo siento, no pude procesar tu respuesta.";
         addMessage("assistant", fallback);
         messages.push({ role: "assistant", content: fallback });
-      } else if (esPaso2(fullReply)) {
-        const partes = splitPaso2(fullReply);
-        for (let i = 0; i < partes.length; i++) addMessage("assistant", partes[i]);
-        messages.push({ role: "assistant", content: fullReply });
       } else if (esPregunta(fullReply)) {
         showButtons(true);
         const partes = splitPregunta(fullReply);
@@ -408,23 +599,22 @@ function initChatDiagnostico() {
           addMessage("assistant", "Diagnostico completado. Estos son tus resultados:");
         }
         await delay(500);
-        showResultCard(textoLimpio);
+        showResultCard();
         resultadoMostrado = true;
 
-        showRecAndDeepButtons();
+        showRecButton();
         messages.push({ role: "assistant", content: fullReply });
       } else if (resultadoMostrado) {
-        const goodbyeMatch = fullReply.match(/(Gracias por confiar[^]*)$/i);
-        if (goodbyeMatch) {
-          const recText = fullReply.substring(0, fullReply.indexOf(goodbyeMatch[1])).trim();
-          const goodbyeText = goodbyeMatch[1].trim();
-          if (recText) addMessage("assistant", recText);
-          addMessage("assistant", goodbyeText);
-        } else {
-          addMessage("assistant", fullReply);
-        }
-        diagnosticoFinalizado = true;
-        btnRec.disabled = false;
+        // Renderizar recomendaciones como dashboard profesional
+        const dashboard = renderDashboard(fullReply);
+        messagesEl.appendChild(dashboard);
+        scrollToBottom();
+        state = "completed";
+        // Ocultar "Regresar al chat", solo "Volver al inicio" + Deep
+        document.getElementById("btn-volver-chat")!.classList.add("hidden");
+        recContainer.classList.add("hidden");
+        btnRec.disabled = true;
+        deepContainer.classList.remove("hidden");
         btnDeep.disabled = false;
       } else {
         addMessage("assistant", fullReply);
@@ -438,7 +628,7 @@ function initChatDiagnostico() {
       );
     } finally {
       isLoading = false;
-      if (!diagnosticoFinalizado) setButtonsLoading(false);
+      if (state !== "completed") setButtonsLoading(false);
     }
   }
 
@@ -468,13 +658,10 @@ function initChatDiagnostico() {
     deepDiagnosticActive = true;
     deepRespuestasPorCategoria = {};
     deepUltimaCategoria = "";
-    deepCategoriasCompletadas = 0;
-    deepDiagnosticoFinalizado = false;
 
     // Limpiar historial para que la IA empiece fresca el diagnóstico profundo
     messages = [];
-    chatTerminado = false;
-    diagnosticoFinalizado = false;
+    state = "inProgress";
     resultadoMostrado = false;
 
     addMessage("assistant", "Iniciando diagnóstico profundo nivel " + deepDiagnosticLevel + "...");
@@ -482,7 +669,7 @@ function initChatDiagnostico() {
   });
 
   btnVolverChat.addEventListener("click", () => {
-    if (chatTerminado) return;
+    if (state === "completed") return;
     resultCard.classList.add("hidden");
     deepResultCard.classList.add("hidden");
     chatDisclaimer.classList.remove("hidden");
@@ -493,16 +680,44 @@ function initChatDiagnostico() {
     window.location.href = "/";
   });
 
-  btnVolverDeep.addEventListener("click", () => {
-    if (chatTerminado) return;
-    deepResultCard.classList.add("hidden");
-    chatDisclaimer.classList.remove("hidden");
-    messagesEl.scrollIntoView({ behavior: "smooth" });
-  });
-
   btnSalirDeep.addEventListener("click", () => {
     window.location.href = "/";
   });
+
+  // ─── PREVIEW: ?preview en la URL muestra el dashboard con datos de ejemplo ───
+  if (window.location.search.includes("preview")) {
+    const previewData = `=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===
+CV: 1/2 (50%)
+BD: 8/11 (72.73%)
+EC: 7/10 (70%)
+AP: 12/19 (63.16%)
+IS: 9/12 (75%)
+IC: 5/11 (45.45%)
+
+**Fortalezas**
+- Excelente desempeño en Ingeniería de Seguridad (IS) con un 75% de adopción de prácticas como SAST, escaneo de dependencias y secrets management.
+- Build & Deployment (BD) muestra madurez con pipelines automatizados y despliegues consistentes.
+- Estándares de Código (EC) bien establecidos con linters y revisiones de pares.
+
+**Oportunidades**
+- Integración Continua (IC) es el área más débil con solo 45% — se recomienda implementar CI/CD con pruebas automáticas en cada commit.
+- Control de Versiones (CV) necesita atención inmediata: solo 1 de 2 prácticas adoptadas. Estrategia de branching y code review formal pendientes.
+- Automatización de Pruebas (AP) en 63% — aumentar cobertura de tests unitarios y de integración.
+
+**Conclusión**
+El nivel de madurez DevOps general es intermedio (62%). Las áreas de seguridad y despliegue están sólidas, pero se requiere un plan de acción urgente en control de versiones e integración continua para alcanzar un nivel avanzado en los próximos 6 meses.`;
+
+    setTimeout(() => {
+      state = "inProgress";
+      deepDiagnosticActive = true;
+      showDeepResultCard(previewData);
+      state = "completed";
+      showButtons(false);
+      recContainer.classList.add("hidden");
+      (document.getElementById("deep-container") as HTMLElement).classList.add("hidden");
+      (document.getElementById("btn-container") as HTMLElement).classList.add("hidden");
+    }, 300);
+  }
 
 }
 

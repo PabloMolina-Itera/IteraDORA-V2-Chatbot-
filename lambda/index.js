@@ -78,47 +78,41 @@ function buildDeepDiagnosticPrompt(level, respuestasCount) {
     "Avanzado":     { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
   };
   var cats = practices[level] || practices["Intermedio"];
-  var catNames = {
-    CV: "Control de Versiones", BD: "Build & Deploy Automation",
-    EC: "Code Standards & Quality Code", AP: "Test Automation",
-    IS: "Security Engineering", IC: "Continuous Integration"
-  };
   var totalPracticas = Object.values(cats).reduce(function (a, b) { return a + b; }, 0);
 
-  var base = "Eres IteraDORA, realizando un DIAGNÓSTICO PROFUNDO de madurez DevOps nivel " + level + ".\n\n" +
-    "IMPORTANTE: El diagnóstico general YA TERMINÓ. Esto es el DIAGNÓSTICO PROFUNDO.\n" +
-    "El usuario es nivel " + level + ". IGNORA mensajes anteriores. PROHIBIDO usar 'Pregunta X de 11'. Solo formato [CAT].\n\n" +
-    "Haz preguntas de Sí/No sobre prácticas DevOps específicas para este nivel, organizadas por categoría.\n" +
-    "Haz UNA pregunta a la vez. No mezcles categorías en una misma respuesta.\n\n" +
-    "CATEGORÍAS (en este orden exacto):\n" +
-    "1. CV - " + catNames.CV + " (" + cats.CV + " prácticas)\n" +
-    "2. BD - " + catNames.BD + " (" + cats.BD + " prácticas)\n" +
-    "3. EC - " + catNames.EC + " (" + cats.EC + " prácticas)\n" +
-    "4. AP - " + catNames.AP + " (" + cats.AP + " prácticas)\n" +
-    "5. IS - " + catNames.IS + " (" + cats.IS + " prácticas)\n" +
-    "6. IC - " + catNames.IC + " (" + cats.IC + " prácticas)\n\n" +
-    "Total: " + totalPracticas + " prácticas. Para cada una, pregunta si la organización YA implementa esa práctica (Sí/No).\n\n" +
-    "FORMATO DE CADA PREGUNTA (OBLIGATORIO - o el sistema fallará):\n" +
-    "[XX] Pregunta X de " + totalPracticas + ":\n\n" +
-    "Tema: [título corto y descriptivo de la práctica]\n\n" +
-    "[Una o dos líneas explicando brevemente por qué esta práctica es importante]\n\n" +
-    "¿[pregunta concreta que se responda con Sí o No]?\n\n" +
-    "Donde [XX] es el código REAL de categoría (CV, BD, EC, AP, IS, IC). NO uses [CAT] literal.\n" +
-    "X = número secuencial global, de 1 hasta " + totalPracticas + ". NO reinicies el conteo por categoría.\n\n" +
-    "Ejemplo (primera pregunta del diagnóstico):\n" +
-    "[CV] Pregunta 1 de " + totalPracticas + ":\n\n" +
-    "Tema: Estrategia de Branching\n\n" +
-    "Las estrategias de branching definen cómo el equipo organiza y gestiona las ramas del repositorio.\n\n" +
-    "¿El equipo utiliza trunk-based development o GitFlow con short-lived branches?\n\n" +
-    "REGLAS:\n" +
-    "- Cuando el usuario responda Sí o No, confirma (1 línea) y siguiente pregunta\n" +
-    "- NO des recomendaciones ni análisis hasta completar TODAS las preguntas\n" +
-    "- NO termines la pregunta con ¿Sí o No? ni frases similares. La pregunta debe ser natural.\n" +
-    "- Preguntas ESPECÍFICAS para nivel " + level + "\n" +
-    "- Para nivel Fundacional: pregunta sobre prácticas básicas (repositorios, primeros pipelines, documentación)\n" +
-    "- Para nivel Intermedio: pregunta sobre automatización, CI/CD, testing automatizado, monitoreo\n" +
-    "- Para nivel Avanzado: pregunta sobre canary releases, feature flags, SLOs, chaos engineering, DevSecOps\n\n" +
-    "DESPUÉS DE LA ÚLTIMA PREGUNTA (" + totalPracticas + " en total), muestra ÚNICAMENTE este bloque:\n\n" +
+  // ── Primera pregunta: texto fijo desde el backend ──
+  if (respuestasCount === 0) {
+    return "Eres IteraDORA. Diagnóstico profundo nivel " + level + ". Responde en español.\n\n" +
+      "RESPONDE ÚNICAMENTE CON ESTE TEXTO:\n\n" +
+      "[CV] Pregunta 1 de " + totalPracticas + ":\n\n" +
+      "Tema: Sistema de Control de Versiones\n\n" +
+      "Un sistema de control de versiones como Git es la base fundamental de cualquier práctica DevOps.\n\n" +
+      "¿La organización utiliza un sistema de control de versiones como Git para gestionar todos sus repositorios de código?";
+  }
+
+  // ── Preguntas siguientes: instrucción simple ──
+  if (respuestasCount < totalPracticas) {
+    return "Eres IteraDORA. Diagnóstico profundo DevOps nivel " + level + ". Responde en español.\n\n" +
+      "El usuario respondió " + respuestasCount + " de " + totalPracticas + " prácticas. Ahora te toca la pregunta " + (respuestasCount + 1) + " de " + totalPracticas + ".\n\n" +
+      "FORMATO OBLIGATORIO - copia esta estructura exacta:\n\n" +
+      "[CAT] Pregunta " + (respuestasCount + 1) + " de " + totalPracticas + ":\n\n" +
+      "Tema: [título corto]\n\n" +
+      "[una frase explicando la importancia]\n\n" +
+      "¿[pregunta concreta de Sí o No]?\n\n" +
+      "REEMPLAZA [CAT] por una de estas siglas según la categoría que corresponda:\n" +
+      "- CV = Control de Versiones (" + cats.CV + " prácticas en total)\n" +
+      "- BD = Build & Deploy (" + cats.BD + " prácticas en total)\n" +
+      "- EC = Code Standards (" + cats.EC + " prácticas en total)\n" +
+      "- AP = Test Automation (" + cats.AP + " prácticas en total)\n" +
+      "- IS = Security Engineering (" + cats.IS + " prácticas en total)\n" +
+      "- IC = Continuous Integration (" + cats.IC + " prácticas en total)\n\n" +
+      "El orden es: CV → BD → EC → AP → IS → IC. Ya se respondieron " + respuestasCount + ". La categoría actual es la que corresponda según el orden y conteo.\n\n" +
+      "NO escribas recomendaciones. NO escribas análisis. SOLO la pregunta.";
+  }
+
+  // ── Resultado final ──
+  return "Eres IteraDORA. Diagnóstico profundo nivel " + level + " COMPLETADO. Responde en español.\n\n" +
+    "El usuario respondió las " + totalPracticas + " prácticas. Calcula los aciertos (Sí = acierto) y muestra:\n\n" +
     "=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===\n" +
     "CV: [aciertos]/" + cats.CV + " ([porcentaje]%)\n" +
     "BD: [aciertos]/" + cats.BD + " ([porcentaje]%)\n" +
@@ -126,19 +120,7 @@ function buildDeepDiagnosticPrompt(level, respuestasCount) {
     "AP: [aciertos]/" + cats.AP + " ([porcentaje]%)\n" +
     "IS: [aciertos]/" + cats.IS + " ([porcentaje]%)\n" +
     "IC: [aciertos]/" + cats.IC + " ([porcentaje]%)\n\n" +
-    "No agregues recomendaciones ni análisis después del bloque de resultados. Solo el bloque.\n\n" +
-    "Si el usuario escribe algo que no es Sí o No, responde: \"Por favor, responde Sí o No a la pregunta actual.\"";
-
-  // ── Instrucción dinámica según conteo REAL de respuestas ──
-  if (respuestasCount >= totalPracticas) {
-    base += "\n\n⚠️ INSTRUCCIÓN FINAL: El backend confirma que ya se respondieron las " + totalPracticas + " prácticas. Muestra ÚNICAMENTE el bloque === RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===. PROHIBIDO hacer más preguntas.";
-  } else if (respuestasCount === 0) {
-    base += "\n\n⚠️ INSTRUCCIÓN: El backend confirma que este es el INICIO del diagnóstico profundo. Empieza INMEDIATAMENTE con la Pregunta 1 de " + totalPracticas + " [CV]. Sin introducciones.";
-  } else {
-    base += "\n\n⚠️ INSTRUCCIÓN OBLIGATORIA: El backend confirma que se han respondido " + respuestasCount + " de " + totalPracticas + " prácticas. Ahora debes mostrar ÚNICAMENTE la Pregunta " + (respuestasCount + 1) + " de " + totalPracticas + ". Sigue el orden CV → BD → EC → AP → IS → IC. NO te saltes preguntas. NO muestres resultados hasta completar las " + totalPracticas + ".";
-  }
-
-  return base;
+    "Solo el bloque de resultados. Nada más.";
 }
 
 function validarMensaje(messages) {
@@ -282,14 +264,27 @@ exports.handler = async function (event) {
 
     var respuestasCount = contarRespuestas(messages);
 
-    // ── DIAGNÓSTICO GENERAL: preguntas 2-11 SIN LLM ──
-    // Las preguntas son texto fijo. No necesitamos IA para mostrarlas.
-    if (!isDeepDiagnostic && respuestasCount < TOTAL && respuestasCount > 0) {
-      var idx = respuestasCount; // índice de la PRÓXIMA pregunta
+    // ── DIAGNÓSTICO GENERAL: todas las preguntas SIN LLM ──
+    if (!isDeepDiagnostic && respuestasCount < TOTAL) {
+      var idx = respuestasCount;
       if (idx < PREGUNTAS.length) {
-        var preguntaDirecta = "¡Ánimo! Vas muy bien.\n\nPregunta " + (idx + 1) + " de " + TOTAL + ":\n\n" + PREGUNTAS[idx];
+        var animo = idx > 0 ? "¡Ánimo! Vas muy bien.\n\n" : "";
+        var preguntaDirecta = animo + "Pregunta " + (idx + 1) + " de " + TOTAL + ":\n\n" + PREGUNTAS[idx];
         return respond(200, { message: { role: "assistant", content: preguntaDirecta } });
       }
+    }
+
+    // ── DIAGNÓSTICO PROFUNDO: primera pregunta SIN LLM ──
+    if (isDeepDiagnostic && respuestasCount === 0) {
+      var deepPractices = {
+        "Fundacional":  { CV: 1, BD: 2, EC: 3, AP: 5, IS: 6, IC: 2 },
+        "Intermedio":   { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
+        "Avanzado":     { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
+      };
+      var deepCats = deepPractices[deepLevel] || deepPractices["Intermedio"];
+      var deepTotal = Object.values(deepCats).reduce(function (a, b) { return a + b; }, 0);
+      var deepPreguntaDirecta = "[CV] Pregunta 1 de " + deepTotal + ":\n\nTema: Sistema de Control de Versiones\n\nUn sistema de control de versiones como Git es la base fundamental de cualquier práctica DevOps.\n\n¿La organización utiliza un sistema de control de versiones como Git para gestionar todos sus repositorios de código?";
+      return respond(200, { message: { role: "assistant", content: deepPreguntaDirecta } });
     }
 
     if (!USE_OLLAMA && !bedrockClient) {

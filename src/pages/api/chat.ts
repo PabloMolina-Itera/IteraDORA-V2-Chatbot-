@@ -156,6 +156,13 @@ Por último, revisemos las prácticas de validación en producción.
 
 const TOTAL = PREGUNTAS.length;
 
+// Configuración compartida del diagnóstico profundo
+const DEEP_PRACTICES: Record<string, Record<string, number>> = {
+  Fundacional:  { CV: 1, BD: 2, EC: 3, AP: 5, IS: 6, IC: 2 },
+  Intermedio:   { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
+  Avanzado:     { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
+};
+
 function buildSystemPrompt(respuestasCount: number = 0): string {
   // ── Fase de preguntas ──
   if (respuestasCount < TOTAL) {
@@ -201,81 +208,73 @@ const RESPUESTAS_VALIDAS = ["Sí", "No", "Quiero recomendaciones", "Si", "si", "
 
 // ─── DEEP DIAGNOSTIC PROMPT ───
 function buildDeepDiagnosticPrompt(level: string, respuestasCount: number = 0): string {
-  const practices: Record<string, Record<string, number>> = {
-    Fundacional:  { CV: 1, BD: 2, EC: 3, AP: 5, IS: 6, IC: 2 },
-    Intermedio:   { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 },
-    Avanzado:     { CV: 2, BD: 3, EC: 4, AP: 4, IS: 7, IC: 3 }
-  };
-  const cats = practices[level] || practices["Intermedio"];
-  const catNames: Record<string, string> = {
-    CV: "Control de Versiones", BD: "Build & Deploy Automation",
-    EC: "Code Standards & Quality Code", AP: "Test Automation",
-    IS: "Security Engineering", IC: "Continuous Integration"
-  };
+  const cats = DEEP_PRACTICES[level] || DEEP_PRACTICES["Intermedio"];
   const totalPracticas = Object.values(cats).reduce((a: number, b: number) => a + b, 0);
 
-  let base = `Eres IteraDORA, realizando un DIAGNÓSTICO PROFUNDO de madurez DevOps nivel ${level}.
+  // ── Primera pregunta: texto fijo desde el backend ──
+  if (respuestasCount === 0) {
+    return `Eres IteraDORA. Diagnóstico profundo nivel ${level}. Responde en español.
 
-IMPORTANTE: El diagnóstico general de 11 preguntas YA TERMINÓ. Esto es el DIAGNÓSTICO PROFUNDO.
-El usuario es nivel ${level}. IGNORA mensajes anteriores. PROHIBIDO usar 'Pregunta X de 11'. Solo formato [CAT].
+RESPONDE ÚNICAMENTE CON ESTE TEXTO:
 
-Haz preguntas de Sí/No sobre prácticas DevOps específicas para este nivel, organizadas por categoría.
-Haz UNA pregunta a la vez. No mezcles categorías en una misma respuesta.
+[CV] Pregunta 1 de ${totalPracticas}:
 
-CATEGORÍAS (en este orden exacto):
-1. CV - ${catNames.CV} (${cats.CV} prácticas)
-2. BD - ${catNames.BD} (${cats.BD} prácticas)
-3. EC - ${catNames.EC} (${cats.EC} prácticas)
-4. AP - ${catNames.AP} (${cats.AP} prácticas)
-5. IS - ${catNames.IS} (${cats.IS} prácticas)
-6. IC - ${catNames.IC} (${cats.IC} prácticas)
+Tema: Sistema de Control de Versiones
 
-Total: ${totalPracticas} prácticas. Para cada una, pregunta si la organización YA implementa esa práctica (Sí/No).
+Un sistema de control de versiones como Git es la base fundamental de cualquier práctica DevOps.
 
-FORMATO DE CADA PREGUNTA (OBLIGATORIO - o el sistema fallará):
-[XX] Pregunta X de ${totalPracticas}:
-
-Tema: [título corto y descriptivo de la práctica]
-
-[Una o dos líneas explicando brevemente por qué esta práctica es importante]
-
-¿[pregunta concreta que se responda con Sí o No]?
-
-Donde [XX] es el código REAL de categoría (CV, BD, EC, AP, IS, IC). NO uses [CAT] literal.
-X = número secuencial global, de 1 hasta ${totalPracticas}. NO reinicies el conteo por categoría.
-
-REGLAS:
-- Cuando el usuario responda Sí o No, confirma (1 línea) y siguiente pregunta
-- NO des recomendaciones ni análisis hasta completar TODAS las preguntas
-- Preguntas ESPECÍFICAS para nivel ${level}
-- Para nivel Fundacional: pregunta sobre prácticas básicas (repositorios, primeros pipelines, documentación)
-- Para nivel Intermedio: pregunta sobre automatización, CI/CD, testing automatizado, monitoreo
-- Para nivel Avanzado: pregunta sobre canary releases, feature flags, SLOs, chaos engineering, DevSecOps
-
-DESPUÉS DE LA ÚLTIMA PREGUNTA (${totalPracticas} en total), muestra ÚNICAMENTE este bloque:
-
-=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===
-CV: [aciertos]/${cats.CV} ([porcentaje]%)
-BD: [aciertos]/${cats.BD} ([porcentaje]%)
-EC: [aciertos]/${cats.EC} ([porcentaje]%)
-AP: [aciertos]/${cats.AP} ([porcentaje]%)
-IS: [aciertos]/${cats.IS} ([porcentaje]%)
-IC: [aciertos]/${cats.IC} ([porcentaje]%)
-
-No agregues recomendaciones ni análisis después del bloque de resultados. Solo el bloque.
-
-Si el usuario escribe algo que no es Sí o No, responde: "Por favor, responde Sí o No a la pregunta actual."`;
-
-  // ── Instrucción dinámica según conteo REAL de respuestas ──
-  if (respuestasCount >= totalPracticas) {
-    base += `\n\n⚠️ INSTRUCCIÓN FINAL: El backend confirma que ya se respondieron las ${totalPracticas} prácticas. Muestra ÚNICAMENTE el bloque === RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===. PROHIBIDO hacer más preguntas.`;
-  } else if (respuestasCount === 0) {
-    base += `\n\n⚠️ INSTRUCCIÓN: El backend confirma que este es el INICIO del diagnóstico profundo. Empieza INMEDIATAMENTE con la Pregunta 1 de ${totalPracticas} [CV]. Sin introducciones.`;
-  } else {
-    base += `\n\n⚠️ INSTRUCCIÓN OBLIGATORIA: El backend confirma que se han respondido ${respuestasCount} de ${totalPracticas} prácticas. Ahora debes mostrar ÚNICAMENTE la Pregunta ${respuestasCount + 1} de ${totalPracticas}. Sigue el orden CV → BD → EC → AP → IS → IC. NO te saltes preguntas. NO muestres resultados hasta completar las ${totalPracticas}.`;
+¿La organización utiliza un sistema de control de versiones como Git para gestionar todos sus repositorios de código?`;
   }
 
-  return base;
+  // ── Preguntas siguientes: instrucción simple ──
+  if (respuestasCount < totalPracticas) {
+    return `Eres IteraDORA. Diagnóstico profundo DevOps nivel ${level}. Responde en español.
+
+El usuario respondió ${respuestasCount} de ${totalPracticas} prácticas. Ahora te toca la pregunta ${respuestasCount + 1} de ${totalPracticas}.
+
+FORMATO OBLIGATORIO - copia esta estructura exacta:
+
+[CAT] Pregunta ${respuestasCount + 1} de ${totalPracticas}:
+
+Tema: [título corto]
+
+[una frase explicando la importancia]
+
+¿[pregunta concreta de Sí o No]?
+
+REEMPLAZA [CAT] por una de estas siglas según la categoría que corresponda:
+- CV = Control de Versiones (${cats.CV} prácticas en total)
+- BD = Build & Deploy (${cats.BD} prácticas en total)
+- EC = Code Standards (${cats.EC} prácticas en total)
+- AP = Test Automation (${cats.AP} prácticas en total)
+- IS = Security Engineering (${cats.IS} prácticas en total)
+- IC = Continuous Integration (${cats.IC} prácticas en total)
+
+El orden es: CV → BD → EC → AP → IS → IC. Ya se respondieron ${respuestasCount}. La categoría actual es la que corresponda según el orden y conteo.
+
+NO escribas recomendaciones. NO escribas análisis. SOLO la pregunta.`;
+  }
+
+  // ── Resultado final ──
+  return `Eres IteraDORA. Diagnóstico profundo nivel ${level} COMPLETADO. Responde en español.
+
+El usuario respondió las ${totalPracticas} prácticas. Calcula los aciertos (Sí = acierto) y devuelve EXACTAMENTE este formato, carácter por carácter:
+
+=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===
+CV: [aciertos]/1 ([porcentaje]%)
+BD: [aciertos]/11 ([porcentaje]%)
+EC: [aciertos]/10 ([porcentaje]%)
+AP: [aciertos]/19 ([porcentaje]%)
+IS: [aciertos]/12 ([porcentaje]%)
+IC: [aciertos]/11 ([porcentaje]%)
+
+IMPORTANTE:
+- NO uses markdown (sin asteriscos, sin negritas, sin bullets).
+- NO escribas texto antes ni después del bloque.
+- NO incluyas recomendaciones, análisis, ni conclusiones.
+- SOLO el bloque === RESULTADOS === con las 6 líneas de categorías.
+- Reemplaza [aciertos] y [porcentaje]% con los valores reales calculados.
+- Cada línea de categoría DEBE empezar exactamente con las siglas (CV:, BD:, etc.) sin espacios ni asteriscos antes.`;
 }
 
 function validarMensaje(messages: { role: string; content: string }[]): string | null {
@@ -333,17 +332,28 @@ export const POST: APIRoute = async ({ request }) => {
 
     const respuestasCount = contarRespuestas(messages);
 
-    // ── DIAGNÓSTICO GENERAL: preguntas 2-11 SIN LLM ──
-    // Las preguntas son texto fijo. No necesitamos IA para mostrarlas.
-    if (!isDeepDiagnostic && respuestasCount < TOTAL && respuestasCount > 0) {
-      const idx = respuestasCount; // índice de la PRÓXIMA pregunta
+    // ── DIAGNÓSTICO GENERAL: todas las preguntas SIN LLM ──
+    if (!isDeepDiagnostic && respuestasCount < TOTAL) {
+      const idx = respuestasCount;
       if (idx < PREGUNTAS.length) {
-        const preguntaDirecta = `¡Ánimo! Vas muy bien.\n\nPregunta ${idx + 1} de ${TOTAL}:\n\n${PREGUNTAS[idx]}`;
+        const animo = idx > 0 ? "¡Ánimo! Vas muy bien.\n\n" : "";
+        const preguntaDirecta = `${animo}Pregunta ${idx + 1} de ${TOTAL}:\n\n${PREGUNTAS[idx]}`;
         return new Response(
           JSON.stringify({ message: { role: "assistant", content: preguntaDirecta } }),
           { status: 200, headers: { "Content-Type": "application/json" } }
         );
       }
+    }
+
+    // ── DIAGNÓSTICO PROFUNDO: primera pregunta SIN LLM ──
+    if (isDeepDiagnostic && respuestasCount === 0) {
+      const cats = DEEP_PRACTICES[deepLevel] || DEEP_PRACTICES["Intermedio"];
+      const total = Object.values(cats).reduce((a: number, b: number) => a + b, 0);
+      const preguntaDirecta = `[CV] Pregunta 1 de ${total}:\n\nTema: Sistema de Control de Versiones\n\nUn sistema de control de versiones como Git es la base fundamental de cualquier práctica DevOps.\n\n¿La organización utiliza un sistema de control de versiones como Git para gestionar todos sus repositorios de código?`;
+      return new Response(
+        JSON.stringify({ message: { role: "assistant", content: preguntaDirecta } }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     // ── DIAGNÓSTICO GENERAL: off-topic ──
@@ -357,7 +367,7 @@ export const POST: APIRoute = async ({ request }) => {
       }
     }
 
-    // ── LLAMADA A IA: solo para resultado final, recomendaciones, o diagnóstico profundo ──
+    // ── LLAMADA A IA: solo para resultado final, recomendaciones, o resto del diagnóstico profundo ──
     if (!USE_OLLAMA && !(await getBedrockClient())) {
       return new Response(
         JSON.stringify({ error: "No hay motor de IA configurado", hint: "Configura OLLAMA_URL o asegura que las credenciales AWS estén disponibles para Bedrock." }),

@@ -48,17 +48,6 @@ import '../styles/chat-diagnostico.css';
             El diagnóstico es rápido: solo responderás 11 preguntas de Sí o No. Al finalizar, recibirás una clasificación y algunas recomendaciones para identificar oportunidades de mejora.
           </div>
         </div>
-        <div id="bubble-pregunta-1" class="hidden flex items-end gap-2 justify-start">
-          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00A8D8] to-[#0095c2] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mb-1 shadow-md">IA</div>
-          <div class="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-bl-md bg-white dark:bg-[#002633] text-[#00334E] dark:text-gray-100 border border-gray-100 dark:border-gray-700/50 text-sm leading-relaxed shadow-sm whitespace-pre-line">
-Pregunta 1 de 11:
-
-Tema: Control de versiones y trazabilidad
-
-Para comenzar, revisemos cómo gestionan la configuración de sus procesos de integración y despliegue.
-
-¿Las definiciones del pipeline están bajo control de código fuente (SCM) como GitHub o GitLab?</div>
-        </div>
       </div>
 
       <!-- Botón Comencemos (inicial) -->
@@ -98,7 +87,7 @@ Para comenzar, revisemos cómo gestionan la configuración de sus procesos de in
     </div>
 
     <!-- Deep Result Card -->
-    <div id="deep-result-card" class="hidden bg-white dark:bg-[#0A3E52] rounded-3xl shadow-2xl shadow-gray-300/50 dark:shadow-black/40 border border-gray-100 dark:border-gray-700/50 overflow-hidden mt-6 max-w-sm mx-auto">
+    <div id="deep-result-card" class="hidden bg-white dark:bg-[#0A3E52] rounded-3xl shadow-2xl shadow-gray-300/50 dark:shadow-black/40 border border-gray-100 dark:border-gray-700/50 overflow-hidden mt-6 max-w-2xl w-full mx-auto">
       <div class="bg-gradient-to-r from-[#3E7CB5] to-[#2A639C] px-5 py-3.5 flex items-center gap-3">
         <div class="w-9 h-9 rounded-xl bg-[#5495CC]/20 flex items-center justify-center text-[#8ABCDB] font-bold text-sm">◆</div>
         <p class="text-white font-semibold text-sm">Diagnóstico Profundo Completado</p>
@@ -106,7 +95,6 @@ Para comenzar, revisemos cómo gestionan la configuración de sus procesos de in
       <div class="p-5 text-center">
         <div id="deep-result-content" class="mb-5 text-[#00334E] dark:text-white text-sm space-y-2"></div>
         <div class="flex gap-2.5 justify-center">
-          <button id="btn-volver-deep" class="px-5 py-2.5 bg-gradient-to-r from-[#5495CC] to-[#3E7CB5] hover:from-[#3E7CB5] hover:to-[#2A639C] text-white rounded-xl font-semibold text-xs transition-all duration-200 shadow-lg shadow-[#5495CC]/20">Regresar al chat</button>
           <button id="btn-salir-deep" class="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-xl font-semibold text-xs transition-all duration-200">Volver al inicio</button>
         </div>
       </div>
