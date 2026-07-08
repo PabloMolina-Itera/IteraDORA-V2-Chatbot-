@@ -811,9 +811,33 @@ function initChatDiagnostico() {
       deepPreguntaIdx = 0;
     }
 
+    // Calcular progreso acumulado
+    const catIdx = DEEP_CATEGORIAS.indexOf(deepCategoriaActual);
+    let preguntaGlobal = 0;
+    for (let i = 0; i < catIdx; i++) {
+      preguntaGlobal += Math.min(cats[DEEP_CATEGORIAS[i]], DEEP_PREGUNTAS[DEEP_CATEGORIAS[i]].length);
+    }
+    preguntaGlobal += deepPreguntaIdx + 1;
+
+    let totalGlobal = 0;
+    for (const c of DEEP_CATEGORIAS) {
+      totalGlobal += Math.min(cats[c], DEEP_PREGUNTAS[c].length);
+    }
+
+    const nombresCat: Record<string, string> = {
+      CV: "Control de Versiones", BD: "Build & Deployment", EC: "Estándares de Código",
+      AP: "Automatización de Pruebas", IS: "Ingeniería de Seguridad", IC: "Integración Continua",
+    };
+    const iconosCat: Record<string, string> = {
+      CV: "🔀", BD: "⚙️", EC: "📋", AP: "🧪", IS: "🔒", IC: "🔄",
+    };
+
     const pregunta = DEEP_PREGUNTAS[deepCategoriaActual][deepPreguntaIdx];
     const totalCat = cats[deepCategoriaActual];
-    const texto = `[${deepCategoriaActual}] Pregunta ${deepPreguntaIdx + 1} de ${totalCat}:\n\n${pregunta}`;
+    const pctGlobal = Math.round((preguntaGlobal / totalGlobal) * 100);
+
+    const header = `${iconosCat[deepCategoriaActual]}  Categoría: ${nombresCat[deepCategoriaActual]} (${deepCategoriaActual})\n━━━━━━━━━━━━━━━━━━━━━━\nPregunta ${deepPreguntaIdx + 1} de ${totalCat} en esta categoría  •  Global: ${preguntaGlobal} de ${totalGlobal}  (${pctGlobal}%)`;
+    const texto = `${header}\n\n${pregunta}`;
     addMessage("assistant", texto);
     messages.push({ role: "assistant", content: texto });
     scrollToBottom();
