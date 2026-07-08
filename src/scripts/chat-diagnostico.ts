@@ -290,6 +290,57 @@ function initChatDiagnostico() {
     btnRec.disabled = false;
   }
 
+  function mostrarRecomendacionesLocales() {
+    btnRec.disabled = true;
+    btnRec.textContent = "Generando...";
+    const nivel = computeLevel();
+    const porcentaje = Math.round((respuestasSi / TOTAL_PREGUNTAS) * 100);
+
+    // Determinar fortalezas y debilidades según el puntaje
+    const fortalezas: string[] = [];
+    const oportunidades: string[] = [];
+    if (porcentaje >= 70) {
+      fortalezas.push("Tu organización muestra una adopción sólida de prácticas DevOps fundamentales.");
+      fortalezas.push("La mayoría de los procesos clave ya están automatizados o estandarizados.");
+      oportunidades.push("Para alcanzar un nivel Avanzado, enfócate en seguridad integrada y observabilidad.");
+      oportunidades.push("Considera implementar health checks post-deploy y feature toggles avanzados.");
+    } else if (porcentaje >= 40) {
+      fortalezas.push("Tu organización ya inició el camino DevOps con algunas prácticas establecidas.");
+      fortalezas.push("Hay conciencia sobre la importancia de la automatización en el ciclo de desarrollo.");
+      oportunidades.push("Prioriza implementar Integración Continua con builds automáticos en cada commit.");
+      oportunidades.push("Refuerza el control de versiones: asegura que todo artefacto esté en el SCM.");
+      oportunidades.push("Implementa Infraestructura como Código (IaC) para reducir errores manuales.");
+    } else {
+      fortalezas.push("El equipo muestra interés en mejorar sus prácticas DevOps, lo cual es el primer paso.");
+      oportunidades.push("Es urgente adoptar un sistema de control de versiones como Git para todos los repositorios.");
+      oportunidades.push("Comienza con Integración Continua básica: builds automáticos al hacer push.");
+      oportunidades.push("Implementa pipelines de despliegue automatizados, aunque sean simples al inicio.");
+      oportunidades.push("Establece estándares de código con linters y revisiones de pares obligatorias.");
+    }
+
+    const conclusion = nivel === "Avanzado"
+      ? "Tu organización está en el nivel Avanzado de madurez DevOps. Continúa refinando tus prácticas de seguridad, observabilidad y entrega continua para mantenerte a la vanguardia."
+      : nivel === "Intermedio"
+        ? "Tu organización está en un nivel Intermedio. Con inversión enfocada en CI/CD, automatización de pruebas y seguridad, puedes alcanzar el nivel Avanzado en 6-12 meses."
+        : "Tu organización está en nivel Fundacional. Comienza con control de versiones e integración continua como base, luego avanza hacia automatización de despliegues y pruebas. Cada mejora cuenta.";
+
+    const markdown = `**Fortalezas**\n- ${fortalezas.join("\n- ")}\n\n**Oportunidades de Mejora**\n- ${oportunidades.join("\n- ")}\n\n**Conclusión**\n${conclusion}`;
+
+    setTimeout(() => {
+      addMessage("assistant", "💡 Aquí están tus recomendaciones personalizadas:");
+      const dashboard = renderDashboard(markdown);
+      messagesEl.appendChild(dashboard);
+      scrollToBottom();
+
+      // Mostrar Diagnóstico Profundo después de las recomendaciones
+      recContainer.classList.add("hidden");
+      deepContainer.classList.remove("hidden");
+      btnDeep.disabled = false;
+      btnRec.textContent = "💡  Solicitar recomendaciones";
+      state = "completed";
+    }, 600);
+  }
+
   function setButtonsLoading(loading: boolean) {
     if (state === "completed") return;
     btnSi.disabled = loading;
@@ -721,7 +772,10 @@ function initChatDiagnostico() {
       sendMessage("No");
     }
   });
-  btnRec.addEventListener("click", () => sendMessage("Quiero recomendaciones"));
+  btnRec.addEventListener("click", () => {
+    if (isLoading) return;
+    mostrarRecomendacionesLocales();
+  });
 
   btnDeep.addEventListener("click", () => {
     showButtons(false);
