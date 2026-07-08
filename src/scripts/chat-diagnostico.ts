@@ -4,6 +4,21 @@ function initChatDiagnostico() {
   // Backend: endpoint de Astro SSR con Bedrock Claude integrado
   const API_URL = "/api/chat";
 
+  // ─── Preguntas del diagnóstico (sin IA, lógica 100% frontend) ───
+  const PREGUNTAS = [
+    "Tema: Control de versiones y trazabilidad\n\nPara comenzar, revisemos cómo gestionan la configuración de sus procesos de integración y despliegue.\n\n¿Las definiciones del pipeline están bajo control de código fuente (SCM) como GitHub o GitLab?",
+    "Tema: Infraestructura como Código\n\nLa automatización de la infraestructura ayuda a reducir errores manuales y mejorar la consistencia entre entornos.\n\n¿La Infraestructura como Código (IaC) se utiliza como estándar en su organización?",
+    "Tema: Integración Continua\n\nLa integración frecuente permite detectar problemas más rápido y reducir conflictos entre desarrolladores.\n\n¿El código se integra en la rama principal al menos una vez al día?",
+    "Tema: Estabilidad del pipeline\n\nUn pipeline inestable puede afectar significativamente la velocidad de entrega.\n\n¿Las builds o despliegues fallidos son tratados como la máxima prioridad por el equipo?",
+    "Tema: Calidad automatizada\n\nLos controles automáticos ayudan a mantener estándares de calidad consistentes.\n\n¿Las builds fallan automáticamente cuando no se cumplen los umbrales acordados de calidad, cobertura o análisis estático?",
+    "Tema: Automatización de despliegues\n\nEvaluemos el nivel de automatización de los entornos de desarrollo y pruebas.\n\n¿El pipeline despliega automáticamente los artefactos en el entorno más bajo disponible (Dev o Test)?",
+    "Tema: Feature Toggles\n\nLas banderas de funcionalidad permiten desplegar código sin exponer funcionalidades incompletas.\n\n¿Utilizan feature toggles para facilitar el desarrollo y la integración continua del equipo?",
+    "Tema: Estado liberable\n\nLas organizaciones con alta madurez DevOps suelen mantener su código en un estado constantemente desplegable.\n\n¿Las funcionalidades incompletas pueden liberarse de forma segura a producción sin afectar a los usuarios?",
+    "Tema: Arquitectura desacoplada\n\nLa independencia entre componentes facilita pruebas, despliegues y mantenimiento.\n\n¿El código puede desarrollarse, probarse y desplegarse de forma independiente?",
+    "Tema: Seguridad integrada\n\nLa seguridad es más efectiva cuando forma parte del pipeline de desarrollo.\n\n¿Las builds fallan automáticamente cuando los escaneos detectan vulnerabilidades por encima del nivel de riesgo aceptado?",
+    "Tema: Observabilidad y confiabilidad\n\nPor último, revisemos las prácticas de validación en producción.\n\n¿Se ejecutan health checks o pruebas smoke para verificar que los servicios funcionan correctamente después del despliegue?",
+  ];
+
   const messagesEl = document.getElementById("chat-messages")!;
   const btnContainer = document.getElementById("btn-container")!;
   const btnSi = document.getElementById("btn-si") as HTMLButtonElement;
@@ -30,6 +45,7 @@ function initChatDiagnostico() {
   let isLoading = false;
   let resultadoMostrado = false;
   let respuestasSi = 0;
+  let preguntaActual = 0; // contador de preguntas (0 = no iniciado)
 
   // ─── DIAGNÓSTICO PROFUNDO ───
   let deepDiagnosticActive = false;
@@ -48,29 +64,27 @@ function initChatDiagnostico() {
 
   const comenzarContainer = document.getElementById("comenzar-container")!;
 
-  btnComenzar.addEventListener("click", async () => {
+  function mostrarSiguientePregunta() {
+    if (preguntaActual >= TOTAL_PREGUNTAS) return;
+    const idx = preguntaActual;
+    const animo = idx > 0 ? "¡Ánimo! Vas muy bien.\n\n" : "";
+    const texto = `${animo}Pregunta ${idx + 1} de ${TOTAL_PREGUNTAS}:\n\n${PREGUNTAS[idx]}`;
+    addMessage("assistant", texto);
+    messages.push({ role: "assistant", content: texto });
+    btnSi.disabled = false;
+    btnNo.disabled = false;
+    state = "inProgress";
+    scrollToBottom();
+  }
+
+  btnComenzar.addEventListener("click", () => {
     btnComenzar.disabled = true;
     btnComenzar.textContent = "Comenzando...";
-    try {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [] }),
-      });
-      const data = await res.json();
-      const content = data.message?.content || "";
+    setTimeout(() => {
       comenzarContainer.classList.add("hidden");
-      addMessage("assistant", content);
-      messages.push({ role: "assistant", content });
       btnContainer.classList.remove("hidden");
-      btnSi.disabled = false;
-      btnNo.disabled = false;
-      state = "inProgress";
-      scrollToBottom();
-    } catch (e) {
-      btnComenzar.disabled = false;
-      btnComenzar.textContent = "Reintentar";
-    }
+      mostrarSiguientePregunta();
+    }, 400);
   });
 
   function scrollToBottom() {
@@ -273,7 +287,9 @@ function initChatDiagnostico() {
   function showRecButton() {
     btnContainer.classList.add("hidden");
     recContainer.classList.remove("hidden");
+    deepContainer.classList.remove("hidden");
     btnRec.disabled = false;
+    btnDeep.disabled = false;
   }
 
   function setButtonsLoading(loading: boolean) {
@@ -527,6 +543,65 @@ function initChatDiagnostico() {
     const userDisplay = displayContent === "INICIAR" ? "Iniciar diagnóstico profundo" : displayContent || content;
     addMessage("user", userDisplay);
     messages.push({ role: "user", content });
+
+    // ── DIAGNÓSTICO GENERAL: preguntas SIN llamada a la API ──
+    if (!deepDiagnosticActive && state === "inProgress") {
+      preguntaActual++;
+      if (preguntaActual < TOTAL_PREGUNTAS) {
+        // Mostrar siguiente pregunta directamente (sin API)
+        await delay(400);
+        mostrarSiguientePregunta();
+        return;
+      }
+      // Si llegamos a la última pregunta, calcular resultado localmente
+      if (preguntaActual === TOTAL_PREGUNTAS) {
+        isLoading = true;
+        setButtonsLoading(true);
+        addTypingIndicator();
+        await delay(600);
+        removeTypingIndicator();
+
+        const porcentaje = Math.round((respuestasSi / TOTAL_PREGUNTAS) * 100);
+        let nivel = "Fundacional";
+        if (porcentaje > 66) nivel = "Avanzado";
+        else if (porcentaje > 33) nivel = "Intermedio";
+
+        // Intentar obtener resumen personalizado de la IA
+        try {
+          const res = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            let fullReply = data.message?.content || "";
+            fullReply = sanitizarTextoIA(fullReply);
+
+            if (fullReply && esResultado(fullReply)) {
+              let textoLimpio = sanitizarTextoIA(fullReply);
+              textoLimpio = textoLimpio.replace(/\*?Puntaje:?\*?\s*\d+[^\n]*/gi, "");
+              textoLimpio = textoLimpio.replace(/\d+%\s*\w+/g, "");
+              textoLimpio = textoLimpio.replace(/Gracias por confiar[^]*$/gi, "").trim();
+              if (textoLimpio) {
+                addMessage("assistant", "Diagnóstico completado. Estos son tus resultados:");
+              }
+            }
+          }
+        } catch (_) {
+          // Si la IA no responde, usamos resultado local
+        }
+
+        await delay(400);
+        showResultCard();
+        resultadoMostrado = true;
+        showRecButton();
+        state = "completed";
+        showButtons(false);
+        isLoading = false;
+        return;
+      }
+    }
 
     isLoading = true;
     setButtonsLoading(true);
