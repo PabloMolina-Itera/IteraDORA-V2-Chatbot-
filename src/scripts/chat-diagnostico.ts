@@ -287,9 +287,7 @@ function initChatDiagnostico() {
   function showRecButton() {
     btnContainer.classList.add("hidden");
     recContainer.classList.remove("hidden");
-    deepContainer.classList.remove("hidden");
     btnRec.disabled = false;
-    btnDeep.disabled = false;
   }
 
   function setButtonsLoading(loading: boolean) {
@@ -597,7 +595,9 @@ function initChatDiagnostico() {
         resultadoMostrado = true;
         showRecButton();
         state = "completed";
-        showButtons(false);
+        btnContainer.classList.add("hidden");
+        btnSi.disabled = true;
+        btnNo.disabled = true;
         isLoading = false;
         return;
       }
