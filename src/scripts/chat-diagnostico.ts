@@ -1,8 +1,8 @@
 import { marked } from "marked";
 
 function initChatDiagnostico() {
-  // Backend: endpoint de Astro SSR con Bedrock Claude integrado
-  const API_URL = "/api/chat";
+  // Backend: URL configurable (Lambda en prod, Astro SSR en dev)
+  const API_URL = (window as any).__API_URL__ || "/api/chat";
 
   // ─── Preguntas del diagnóstico (sin IA, lógica 100% frontend) ───
   const PREGUNTAS = [

@@ -107,4 +107,8 @@ import '../styles/chat-diagnostico.css';
   </div>
 </section>
 
+<script>
+  // URL de la API: configurable en Amplify via PUBLIC_API_URL, por defecto local
+  window.__API_URL__ = import.meta.env.PUBLIC_API_URL || "/api/chat";
+</script>
 <script src="../scripts/chat-diagnostico.ts"></script>
