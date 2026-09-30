@@ -1,0 +1,35 @@
+---
+import "../styles/global.css";
+import Navbar from "../components/Navbar.astro";
+const { title } = Astro.props;
+---
+
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <link rel="icon" href="/favicon.jpg" />
+  </head>
+
+  <body
+    class="bg-[#F0F0F0] text-[#00334E]
+           dark:bg-[#00334E] dark:text-white
+           transition-colors duration-300"
+  >
+
+    <!-- Script Tema: evita el flash aplicando la clase antes de pintar -->
+    <script is:inline>
+      (function () {
+        const saved = localStorage.getItem("theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const isDark = saved === "dark" || (!saved && prefersDark);
+        document.documentElement.classList.toggle("dark", isDark);
+      })();
+    </script>
+
+    <Navbar />
+
+    <main>
+      <slot />
+    </main>
