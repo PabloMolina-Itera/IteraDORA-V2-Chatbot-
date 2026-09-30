@@ -10,6 +10,10 @@
 
 const { BedrockRuntimeClient, InvokeModelCommand } = require("@aws-sdk/client-bedrock-runtime");
 
+//Agregado para envío de correos  
+const { SESClient, SendEmailCommand } = require("@aws-sdk/client-ses");
+const sesClient = new SESClient({ region: process.env.AWS_REGION || "us-east-1" });
+
 const OLLAMA_URL = process.env.OLLAMA_URL || "";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
 const BEDROCK_MODEL = process.env.BEDROCK_MODEL || "us.anthropic.claude-3-haiku-20240307-v1:0";
@@ -216,6 +220,42 @@ function respond(statusCode, data) {
   };
 }
 
+//Agregado para enviar correos *PENDIENTE MODIFICAR Y TESTEAR*
+//el correo en variable de entorno
+async function sendReportEmail(datos) {
+  const { nombre, empresa, correoCliente, respuestasDora, nivelDora } = datos;
+
+  const emailParams = {
+    Source: "juanpablo.molina@iteraprocess.com", // <-- Correo verificado en SES
+    Destination: {
+      ToAddresses: [correoCliente],
+      CcAddresses: ["juanpablo.molina@iteraprocess.com"] // Correo copiado
+    },
+    Message: {
+      Subject: { Data: `Resultados Diagnóstico DORA - ${empresa}` },
+      Body: {
+        Html: {
+          Data: `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+              <h2 style="color: #1a73e8;">Informe de Madurez DevOps (DORA)</h2>
+              <p>Hola <b>${nombre}</b>,</p>
+              <p>Gracias por completar la evaluación para <b>${empresa}</b>.</p>
+              
+              <div style="background-color: #e8f0fe; padding: 15px; border-left: 4px solid #1a73e8; margin: 15px 0;">
+                <h3 style="margin:0; color: #174ea6;">Nivel DORA: ${nivelDora || 'Evaluado'}</h3>
+              </div>
+
+              <p>El reporte ha sido registrado exitosamente en nuestro sistema.</p>
+            </div>
+          `
+        }
+      }
+    }
+  };
+
+  await sesClient.send(new SendEmailCommand(emailParams));
+}
+
 // ─── HANDLER ───
 exports.handler = async function (event) {
   if ((event.requestContext && event.requestContext.http && event.requestContext.http.method === "OPTIONS") || event.httpMethod === "OPTIONS") {
@@ -224,6 +264,16 @@ exports.handler = async function (event) {
 
   try {
     var body = typeof event.body === "string" ? JSON.parse(event.body) : event.body;
+    // ─── INTERCEPCIÓN DE ACCIÓN DE CORREO *PENDIENTE REVISAR Y TESTEAR* ───
+    if (body && body.action === "SEND_EMAIL") {
+      try {
+        await sendReportEmail(body.userData);
+        return respond(200, { message: "Correo enviado exitosamente" });
+      } catch (emailErr) {
+        console.error("Error al enviar email:", emailErr);
+        return respond(500, { error: "Error al enviar el correo", detail: emailErr.message });
+      }
+    }
     var messages = body.messages;
     if (!messages || !Array.isArray(messages)) {
       return respond(400, { error: 'El body debe incluir { messages: [...] }' });

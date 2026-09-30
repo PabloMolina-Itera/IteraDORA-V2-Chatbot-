@@ -17,11 +17,11 @@ import '../styles/chat-diagnostico.css';
       </p>
     </div>
 
-    <div
-      id="chat-container"
-      class="flex flex-col bg-white dark:bg-[#0A3E52] rounded-3xl shadow-xl shadow-gray-200/50 dark:shadow-black/30 overflow-hidden border border-gray-100 dark:border-gray-700/50"
-      style="height: 520px; max-height: calc(100vh - 280px);"
-    >
+    <div 
+  id="chat-container" 
+  class="flex flex-col bg-white dark:bg-[#0A3E52] rounded-3xl shadow-xl shadow-gray-200/50 dark:shadow-black/30 overflow-hidden border border-gray-100 dark:border-gray-700/50" 
+  style="height: 520px;" 
+>
       <div class="bg-gradient-to-r from-[#00334E] to-[#004466] dark:from-[#002633] dark:to-[#00334E] px-5 py-4 flex items-center gap-3">
         <div class="relative">
           <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-[#00A8D8] to-[#0095c2] flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-[#00A8D8]/30">IA</div>
@@ -38,7 +38,7 @@ import '../styles/chat-diagnostico.css';
 
       <div
         id="chat-messages"
-        class="flex-1 p-5 space-y-4 overflow-y-auto bg-gradient-to-b from-gray-50/50 to-white dark:from-[#0A3E52]/50 dark:to-[#0A3E52]"
+         class="flex-1 p-5 space-y-4 overflow-y-auto h-[350px] bg-gradient-to-b from-gray-50/50 to-white dark:from-[#0A3E52]/50 dark:to-[#0A3E52]"
         style="scroll-behavior: smooth;"
       >
         <div class="flex items-end gap-2 justify-start">
@@ -50,10 +50,60 @@ import '../styles/chat-diagnostico.css';
         </div>
       </div>
 
-      <!-- Botón Comencemos (inicial) -->
-      <div id="comenzar-container" class="border-t border-gray-100 dark:border-gray-700/50 px-4 py-3 bg-white dark:bg-[#0A3E52]">
-        <button id="btn-comenzar" class="w-full bg-gradient-to-r from-[#00A8D8] to-[#0095c2] hover:from-[#0095c2] hover:to-[#0088b0] text-white py-3 rounded-2xl font-semibold text-sm transition-all duration-200 shadow-md shadow-[#00A8D8]/20 active:scale-95">Comencemos</button>
-      </div>
+      <!-- Datos del usuario antes de comenzar -->
+<div id="comenzar-container" class="border-t border-gray-100 dark:border-gray-700/50 px-4 py-4 bg-white dark:bg-[#0A3E52]">
+
+  <div class="space-y-3">
+
+    <div>
+      <label for="usuario-nombre" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+        Nombre
+      </label>
+
+      <input
+        id="usuario-nombre"
+        type="text"
+        placeholder="Tu nombre"
+        class="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#082f3f] text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00A8D8]"
+      />
+    </div>
+
+    <div>
+      <label for="usuario-empresa" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+        Empresa
+      </label>
+
+      <input
+        id="usuario-empresa"
+        type="text"
+        placeholder="Nombre de tu empresa"
+        class="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#082f3f] text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00A8D8]"
+      />
+    </div>
+
+    <div>
+      <label for="usuario-correo" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+        Correo electrónico
+      </label>
+
+      <input
+        id="usuario-correo"
+        type="email"
+        placeholder="tu@empresa.com"
+        class="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#082f3f] text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00A8D8]"
+      />
+    </div>
+
+    <button
+      id="btn-comenzar"
+      class="w-full bg-gradient-to-r from-[#00A8D8] to-[#0095c2] hover:from-[#0095c2] hover:to-[#0088b0] text-white py-3 rounded-2xl font-semibold text-sm transition-all duration-200 shadow-md shadow-[#00A8D8]/20 active:scale-95"
+    >
+      Comenzar diagnóstico
+    </button>
+
+  </div>
+
+</div>
       <!-- Botones Sí / No -->
       <div id="btn-container" class="hidden border-t border-gray-100 dark:border-gray-700/50 px-4 py-3 bg-white dark:bg-[#0A3E52]">
         <div class="flex gap-3">
@@ -82,6 +132,9 @@ import '../styles/chat-diagnostico.css';
         <div class="flex gap-2.5 justify-center">
           <button id="btn-volver-chat" class="px-5 py-2.5 bg-gradient-to-r from-[#00A8D8] to-[#0095c2] hover:from-[#0095c2] hover:to-[#0088b0] text-white rounded-xl font-semibold text-xs transition-all duration-200 shadow-lg shadow-[#00A8D8]/20">Regresar al chat</button>
           <button id="btn-salir" class="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-xl font-semibold text-xs transition-all duration-200">Volver al inicio</button>
+          <button id="btn-enviar-correo" class="px-5 py-2.5 bg-[#00334E] text-white rounded-2xl font-semibold text-sm">
+  Enviar resultados por correo
+</button>
         </div>
       </div>
     </div>
@@ -96,6 +149,9 @@ import '../styles/chat-diagnostico.css';
         <div id="deep-result-content" class="mb-5 text-[#00334E] dark:text-white text-sm space-y-2"></div>
         <div class="flex gap-2.5 justify-center">
           <button id="btn-salir-deep" class="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-xl font-semibold text-xs transition-all duration-200">Volver al inicio</button>
+          <button id="btn-enviar-correo-deep" class="px-5 py-2.5 bg-[#00334E] text-white rounded-2xl font-semibold text-sm">
+  Enviar resultados por correo
+</button>
         </div>
       </div>
     </div>

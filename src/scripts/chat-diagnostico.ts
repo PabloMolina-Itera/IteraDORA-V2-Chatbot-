@@ -25,6 +25,7 @@ function initChatDiagnostico() {
   const btnNo = document.getElementById("btn-no") as HTMLButtonElement;
   const recContainer = document.getElementById("rec-container")!;
   const btnRec = document.getElementById("btn-rec") as HTMLButtonElement;
+  const btnEnviarCorreo = document.getElementById("btn-enviar-correo") as HTMLButtonElement;
   const resultCard = document.getElementById("result-card")!;
   const resultContent = document.getElementById("result-content")!;
   const btnVolverChat = document.getElementById("btn-volver-chat")!;
