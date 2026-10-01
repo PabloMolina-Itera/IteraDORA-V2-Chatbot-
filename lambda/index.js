@@ -508,9 +508,14 @@ exports.handler = async function (event) {
       } catch (emailErr) {
         // `detail` sólo se expone para errores de validación propios del servicio de correo,
         // no para fallos de SES/permisos, que podrían filtrar detalle de infraestructura.
-        var esValidacion = emailErr instanceof Error && emailErr.message.indexOf("Falta configurar") === 0;
+        // Un destinatario inválido es un 400: reintentar no lo arregla, y un 502 con
+        // "intenta más tarde" mandaría al usuario a reintentar algo que nunca va a funcionar.
+        var esValidacion =
+          emailErr instanceof Error &&
+          (emailErr.message.indexOf("Falta configurar") === 0 ||
+            emailErr.message.indexOf("Correo de destino inválido") === 0);
         console.error("Error al enviar email:", emailErr);
-        return respond(502, {
+        return respond(esValidacion ? 400 : 502, {
           error: esValidacion ? emailErr.message : "No se pudo enviar el correo. Intenta más tarde.",
         });
       }

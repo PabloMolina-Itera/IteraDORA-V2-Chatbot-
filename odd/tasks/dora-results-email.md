@@ -152,10 +152,25 @@ Lambda (Configuration → Environment variables):
   el profundo, y cablear los dos botones como reenvío manual con realimentación visual.
   Check: `npm run build` + recorrido automatizado de ambos diagnósticos (ver evidencia).
 
-- [ ] **T4 — Configuración y documentación.**
-  Route: inline. `.env.example` con las variables del backend, sección de SES en `lambda/README.md`
-  y actualización de `test-email.js` al contrato nuevo.
+- [x] **T4 — Configuración y documentación.**
+  Route: inline. `.env.example` con las variables del backend (ya entregado en T2), sección de SES
+  en `lambda/README.md` y actualización de `test-email.js` al contrato nuevo.
   Check: lectura de los archivos.
+
+  **Correcciones que aparecieron al documentar** (eran documentación que iba a romper el
+  deploy o el contrato):
+  - el README empaquetaba `index.mjs`, pero el archivo es `index.js`;
+  - el ZIP no incluía `node_modules`, y el handler usa `require`: la Lambda habría arrancado y
+    fallado al invocar;
+  - el "Paso 3" seguía instructing a poner la Function URL en `chat-diagnostico.ts`, que es
+    justamente el antipatrón eliminado en T2 (Function URL expuesta al navegador);
+  - `test-email.js` usaba el contrato viejo (sin `tipo`, sin `respuestasDora` como array, sin
+    `resultadosProfundos`).
+
+  Además, un defecto de contrato detectado al probar el script: un destinatario inválido
+  devolvía `502 "intenta más tarde"`. Reintentar nunca lo arregla y manda al usuario a perder
+  tiempo; ahora devuelve `400` con el detalle, y el `502` queda reservado para fallos de SES o de
+  permisos.
 
 ## Acceptance criteria
 
@@ -223,6 +238,13 @@ Function URL habría quedado inalcanzable en producción. El fix es leer `import
 `process.env`: la primera sirve para `astro dev` (lee el `.env`), la segunda para el server node ya
 construido.
 
+- **T4 — done.** `test-email.js` reescrito al contrato nuevo: lee el destinatario y las variables
+  desde el entorno (sin editar el archivo), manda los tres casos (inicial, profundo, rechazo) y
+  sale con código distinto de 0 si algo falla. `lambda/README.md` actualizado con la arquitectura
+  real, el contenido correcto del ZIP, las variables de SES, la tabla de errores de `SEND_EMAIL`, el
+  contrato en JSON, cómo probarlo y el requisito de desplegar el backend SSR.
+- **T4 — además**, `lambda/index.js` devuelve `400` (no `502`) cuando el destinatario es inválido.
+
 ## Verification evidence
 
 - T1 — `node --check lambda/index.js` → OK.
@@ -270,6 +292,12 @@ construido.
     total;
   - el reenvío manual también llega a SES.
   El harness vive fuera del repo (en el directorio temporal), no es parte del proyecto.
+- T4 — `node --check lambda/index.js` y `node --check test-email.js` → exit 0.
+- T4 — `test-email.js` ejecutado con SES interceptado contra el handler real (todas PASS): el
+  archivo manda 2 correos válidos y el inválido no llega a SES; asunto inicial y asunto profundo
+  correctos; `To` = `TEST_RECIPIENT`; el cuerpo trae empresa, puntaje, preguntas y los porcentajes
+  por categoría; el script sale con código 0.
+- T4 — regresión sobre el harness de T1 tras cambiar la clasificación del error: sigue en verde.
 
 ### Pendiente de verificación (no se puede cerrar localmente)
 
@@ -282,4 +310,6 @@ construido.
 
 ## Next step
 
-T4: `.env.example`, sección de SES en `lambda/README.md` y `test-email.js` al contrato nuevo.
+Todo el alcance code-side está cerrado. Queda lo que no se puede verificar ni escribir desde acá:
+configurar `LAMBDA_FUNCTION_URL` + `SES_FROM_EMAIL` + `SES_CC_EMAIL`, y decidir dónde se despliega
+el backend SSR para que `/api/chat` exista en producción.
