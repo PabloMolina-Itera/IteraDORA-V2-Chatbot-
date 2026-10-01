@@ -7,6 +7,13 @@
 //   OLLAMA_URL    – (Opcional) URL de Ollama si querés usarlo en vez de Bedrock
 //   OLLAMA_MODEL  – (Opcional) Modelo de Ollama (default: llama3.2:3b)
 //   CORS_ORIGIN   – Dominio del frontend (default: *)
+//   SES_FROM_EMAIL – Identidad verificada en SES que envía el informe (obligatorio)
+//   SES_CC_EMAIL   – Destinatario de la copia interna (obligatorio)
+//   SES_REPLY_TO   – (Opcional) Dirección de respuesta directa
+//
+// Acciones aceptadas en el body:
+//   { messages: [...] }                     → devuelve la respuesta del chat
+//   { action: "SEND_EMAIL", userData: {...} } → envía el informe por correo (SES)
 
 const { BedrockRuntimeClient, InvokeModelCommand } = require("@aws-sdk/client-bedrock-runtime");
 
@@ -220,38 +227,260 @@ function respond(statusCode, data) {
   };
 }
 
-//Agregado para enviar correos *PENDIENTE MODIFICAR Y TESTEAR*
-//el correo en variable de entorno
-async function sendReportEmail(datos) {
-  const { nombre, empresa, correoCliente, respuestasDora, nivelDora } = datos;
+// ─── ENVÍO DE CORREO (SES) ───
+// Configuración por variable de entorno (AWS Console → Configuration → Environment variables):
+//   SES_FROM_EMAIL – identidad verificada en SES que envía el correo (obligatorio)
+//   SES_CC_EMAIL   – destinatario de la copia interna (obligatorio)
+//   SES_REPLY_TO   – respuesta directa opcional
+const SES_FROM_EMAIL = process.env.SES_FROM_EMAIL || "";
+const SES_CC_EMAIL = process.env.SES_CC_EMAIL || "";
+const SES_REPLY_TO = process.env.SES_REPLY_TO || "";
 
-  const emailParams = {
-    Source: "juanpablo.molina@iteraprocess.com", // <-- Correo verificado en SES
-    Destination: {
-      ToAddresses: [correoCliente],
-      CcAddresses: ["juanpablo.molina@iteraprocess.com"] // Correo copiado
-    },
-    Message: {
-      Subject: { Data: `Resultados Diagnóstico DORA - ${empresa}` },
-      Body: {
-        Html: {
-          Data: `
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-              <h2 style="color: #1a73e8;">Informe de Madurez DevOps (DORA)</h2>
-              <p>Hola <b>${nombre}</b>,</p>
-              <p>Gracias por completar la evaluación para <b>${empresa}</b>.</p>
-              
-              <div style="background-color: #e8f0fe; padding: 15px; border-left: 4px solid #1a73e8; margin: 15px 0;">
-                <h3 style="margin:0; color: #174ea6;">Nivel DORA: ${nivelDora || 'Evaluado'}</h3>
-              </div>
+// Categories rendered in the deep diagnostic report, in evaluation order.
+var CATEGORIAS_PROFUNDAS = ["CV", "BD", "EC", "AP", "IS", "IC"];
+var NOMBRES_CATEGORIA = {
+  CV: "Control de Versiones",
+  BD: "Build & Deployment",
+  EC: "Estándares de Código",
+  AP: "Automatización de Pruebas",
+  IS: "Ingeniería de Seguridad",
+  IC: "Integración Continua",
+};
 
-              <p>El reporte ha sido registrado exitosamente en nuestro sistema.</p>
-            </div>
-          `
-        }
+// Formato de email deliberadamente simple: suficiente para DESCARTAR entradas inválidas
+// (espacios, sin @, sin dominio) sin pretender ser un validador RFC 5322 completo.
+var EMAIL_RE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>.]{2,}$/;
+
+/**
+ * Escapa texto antes de interpolarlo en HTML.
+ * Todo dato proviene del navegador (nombre, empresa, preguntas), así que nunca es confiable.
+ */
+function escapeHtml(value) {
+  return String(value === null || value === undefined ? "" : value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Escapa texto y convierte saltos de línea en <br> (para el bloque de respuestas). */
+function escapeHtmlMultilinea(value) {
+  return escapeHtml(value).replace(/\r?\n/g, "<br>");
+}
+
+/**
+ * Normaliza `respuestasDora` a una lista [{pregunta, respuesta}].
+ * Acepta el array estructurado del frontend y el objeto {clave: valor} del test local.
+ */
+function normalizarRespuestas(respuestasDora) {
+  var out = [];
+
+  if (Array.isArray(respuestasDora)) {
+    for (var i = 0; i < respuestasDora.length; i++) {
+      var item = respuestasDora[i] || {};
+      var pregunta = item.pregunta || item.tema || item.texto || "";
+      var respuesta = item.respuesta !== undefined ? item.respuesta : item.valor;
+      if (pregunta || respuesta) {
+        out.push({ pregunta: String(pregunta), respuesta: String(respuesta === undefined ? "" : respuesta) });
       }
     }
+  } else if (respuestasDora && typeof respuestasDora === "object") {
+    for (var key in respuestasDora) {
+      if (Object.prototype.hasOwnProperty.call(respuestasDora, key)) {
+        out.push({ pregunta: String(key), respuesta: String(respuestasDora[key]) });
+      }
+    }
+  }
+
+  return out;
+}
+
+/** Construye el bloque HTML con las respuestas del diagnóstico. */
+function buildRespuestasHtml(respuestas) {
+  if (!respuestas.length) return "";
+
+  var rows = respuestas
+    .map(function (r) {
+      var afirmo = /^s[ií]$/i.test(r.respuesta.trim());
+      var color = afirmo ? "#137333" : "#c5221f";
+      var icono = afirmo ? "&#10003;" : "&#10007;";
+
+      return (
+        '<tr>' +
+        '<td style="padding:10px 12px;border-bottom:1px solid #e8eaed;color:#3c4043;font-size:14px;line-height:1.5;vertical-align:top;">' +
+        escapeHtmlMultilinea(r.pregunta) +
+        "</td>" +
+        '<td style="padding:10px 12px;border-bottom:1px solid #e8eaed;text-align:center;vertical-align:top;">' +
+        '<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:' +
+        (afirmo ? "#e6f4ea" : "#fce8e6") +
+        ";color:" +
+        color +
+        ';font-weight:700;font-size:12px;white-space:nowrap;">' +
+        icono +
+        " " +
+        escapeHtml(r.respuesta || "-") +
+        "</span></td></tr>"
+      );
+    })
+    .join("");
+
+  return (
+    '<h3 style="margin:28px 0 10px;color:#202124;font-size:16px;">Respuestas del diagn&oacute;stico</h3>' +
+    '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:1px solid #e8eaed;border-radius:8px;overflow:hidden;">' +
+    "<thead><tr>" +
+    '<th align="left" style="padding:10px 12px;background:#f8f9fa;color:#5f6368;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Pregunta</th>' +
+    '<th align="center" style="padding:10px 12px;background:#f8f9fa;color:#5f6368;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Respuesta</th>' +
+    "</tr></thead><tbody>" +
+    rows +
+    "</tbody></table>"
+  );
+}
+
+/** Construye el bloque HTML con los puntajes por categoría del diagnóstico profundo. */
+function buildResultadosProfundosHtml(resultadosProfundos) {
+  if (!resultadosProfundos || typeof resultadosProfundos !== "object") return "";
+
+  var rows = CATEGORIAS_PROFUNDAS.map(function (cat) {
+    var score = resultadosProfundos[cat];
+    if (!score) return "";
+
+    var match = String(score).match(/(\d+)\s*\/\s*(\d+)\s*\(\s*(\d+(?:\.\d+)?)\s*%\s*\)/);
+    var pct = match ? parseFloat(match[3]) : 0;
+    var color = pct >= 70 ? "#137333" : pct >= 40 ? "#b06000" : "#c5221f";
+    var fondo = pct >= 70 ? "#e6f4ea" : pct >= 40 ? "#fef7e0" : "#fce8e6";
+
+    return (
+      "<tr>" +
+      '<td style="padding:9px 12px;border-bottom:1px solid #e8eaed;color:#3c4043;font-size:14px;">' +
+      escapeHtml(NOMBRES_CATEGORIA[cat] || cat) +
+      ' <span style="color:#5f6368;font-size:12px;">(' + escapeHtml(cat) + ")</span></td>" +
+      '<td align="center" style="padding:9px 12px;border-bottom:1px solid #e8eaed;color:#3c4043;font-size:14px;white-space:nowrap;">' +
+      escapeHtml(String(score).replace(/\s*\(\s*\d+(?:\.\d+)?\s*%\s*\)\s*$/, "")) +
+      "</td>" +
+      '<td align="center" style="padding:9px 12px;border-bottom:1px solid #e8eaed;">' +
+      '<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:' +
+      fondo +
+      ";color:" +
+      color +
+      ';font-weight:700;font-size:12px;white-space:nowrap;">' +
+      escapeHtml(String(score).match(/\(\s*\d+(?:\.\d+)?\s*%\s*\)/) ? String(score).match(/\(\s*\d+(?:\.\d+)?\s*%\s*\)/)[0] : "") +
+      "</span></td></tr>"
+    );
+  })
+    .filter(Boolean)
+    .join("");
+
+  if (!rows) return "";
+
+  return (
+    '<h3 style="margin:28px 0 10px;color:#202124;font-size:16px;">Puntajes por categor&iacute;a</h3>' +
+    '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:1px solid #e8eaed;border-radius:8px;overflow:hidden;">' +
+    "<thead><tr>" +
+    '<th align="left" style="padding:10px 12px;background:#f8f9fa;color:#5f6368;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Categor&iacute;a</th>' +
+    '<th align="center" style="padding:10px 12px;background:#f8f9fa;color:#5f6368;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Pr&aacute;cticas</th>' +
+    '<th align="center" style="padding:10px 12px;background:#f8f9fa;color:#5f6368;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Cumplimiento</th>' +
+    "</tr></thead><tbody>" +
+    rows +
+    "</tbody></table>"
+  );
+}
+
+/** Versión en texto plano del mismo informe (fallback para clientes sin HTML). */
+function buildPlainText(datos, respuestas) {
+  var lineas = [];
+  lineas.push("Informe de Madurez DevOps (DORA)");
+  lineas.push("=======================================");
+  lineas.push("");
+  lineas.push("Nombre: " + (datos.nombre || "-"));
+  lineas.push("Empresa: " + (datos.empresa || "-"));
+  lineas.push("Evaluacion: " + (datos.tipo === "profundo" ? "Diagnostico profundo" : "Diagnostico inicial"));
+  lineas.push("Nivel DORA: " + (datos.nivelDora || "Evaluado"));
+  if (datos.puntaje) lineas.push("Puntaje: " + datos.puntaje);
+
+  if (datos.resultadosProfundos) {
+    lineas.push("");
+    lineas.push("Puntajes por categoria:");
+    for (var ci = 0; ci < CATEGORIAS_PROFUNDAS.length; ci++) {
+      var cat = CATEGORIAS_PROFUNDAS[ci];
+      if (datos.resultadosProfundos[cat]) {
+        lineas.push("  - " + (NOMBRES_CATEGORIA[cat] || cat) + " (" + cat + "): " + datos.resultadosProfundos[cat]);
+      }
+    }
+  }
+
+  if (respuestas.length) {
+    lineas.push("");
+    lineas.push("Respuestas del diagnostico:");
+    for (var ri = 0; ri < respuestas.length; ri++) {
+      lineas.push("  " + (ri + 1) + ". " + respuestas[ri].pregunta + " -> " + (respuestas[ri].respuesta || "-"));
+    }
+  }
+
+  lineas.push("");
+  lineas.push("El reporte ha sido registrado exitosamente en nuestro sistema.");
+  return lineas.join("\n");
+}
+
+/**
+ * Envía el informe de resultados por correo (al cliente, con copia a IteraDORA).
+ * Lanza Error con un mensaje accionable cuando la configuración o los datos no permiten enviar.
+ */
+async function sendReportEmail(datos) {
+  if (!SES_FROM_EMAIL || !SES_CC_EMAIL) {
+    throw new Error("Falta configurar SES_FROM_EMAIL y SES_CC_EMAIL en las variables de entorno de la Lambda");
+  }
+
+  var nombre = String((datos && datos.nombre) || "").trim();
+  var empresa = String((datos && datos.empresa) || "").trim();
+  var correoCliente = String((datos && datos.correoCliente) || "").trim();
+  var nivelDora = String((datos && datos.nivelDora) || "").trim();
+  var esProfundo = datos && datos.tipo === "profundo";
+
+  if (!EMAIL_RE.test(correoCliente)) {
+    throw new Error("Correo de destino inválido o vacío: " + (correoCliente || "(vacío)"));
+  }
+
+  var respuestas = normalizarRespuestas(datos && datos.respuestasDora);
+
+  // El nombre de la empresa va en el asunto; sin él usamos un asunto genérico.
+  var asuntoEmpresa = empresa || "Evaluación DORA";
+  var asunto = esProfundo
+    ? "Resultados Diagnóstico Profundo DORA - " + asuntoEmpresa
+    : "Resultados Diagnóstico DORA - " + asuntoEmpresa;
+
+  var html =
+    '<div style="font-family:Arial,Helvetica,sans-serif;padding:24px;color:#202124;max-width:640px;">' +
+    '<h2 style="color:#1a73e8;margin:0 0 16px;">Informe de Madurez DevOps (DORA)</h2>' +
+    "<p>Hola <b>" + escapeHtml(nombre || "cliente") + "</b>,</p>" +
+    "<p>Gracias por completar la evaluaci&oacute;n para <b>" + escapeHtml(empresa || "su organizaci&oacute;n") + "</b>.</p>" +
+    '<div style="background-color:#e8f0fe;padding:15px;border-left:4px solid #1a73e8;margin:18px 0;">' +
+    '<h3 style="margin:0 0 6px;color:#174ea6;font-size:15px;">Nivel DORA: ' + escapeHtml(nivelDora || "Evaluado") + "</h3>" +
+    (datos.puntaje ? '<p style="margin:0;color:#174ea6;font-size:13px;">Puntaje: ' + escapeHtml(datos.puntaje) + "</p>" : "") +
+    "</div>" +
+    buildResultadosProfundosHtml(datos && datos.resultadosProfundos) +
+    buildRespuestasHtml(respuestas) +
+    "<p style=\"margin-top:28px;color:#5f6368;font-size:13px;\">El reporte ha sido registrado exitosamente en nuestro sistema.</p>" +
+    "</div>";
+
+  var emailParams = {
+    Source: SES_FROM_EMAIL,
+    Destination: {
+      ToAddresses: [correoCliente],
+      CcAddresses: [SES_CC_EMAIL],
+    },
+    Message: {
+      Subject: { Data: asunto, Charset: "UTF-8" },
+      Body: {
+        Text: { Data: buildPlainText(datos || {}, respuestas), Charset: "UTF-8" },
+        Html: { Data: html, Charset: "UTF-8" },
+      },
+    },
   };
+
+  if (SES_REPLY_TO) {
+    emailParams.ReplyToAddresses = [SES_REPLY_TO];
+  }
 
   await sesClient.send(new SendEmailCommand(emailParams));
 }
@@ -264,16 +493,29 @@ exports.handler = async function (event) {
 
   try {
     var body = typeof event.body === "string" ? JSON.parse(event.body) : event.body;
-    // ─── INTERCEPCIÓN DE ACCIÓN DE CORREO *PENDIENTE REVISAR Y TESTEAR* ───
-    if (body && body.action === "SEND_EMAIL") {
+    if (!body || typeof body !== "object") {
+      return respond(400, { error: "El body debe ser un objeto JSON" });
+    }
+
+    // ─── ACCIÓN: envío del informe por correo ───
+    if (body.action === "SEND_EMAIL") {
+      if (!body.userData || typeof body.userData !== "object") {
+        return respond(400, { error: "SEND_EMAIL requiere userData con nombre, empresa, correoCliente y nivelDora" });
+      }
       try {
         await sendReportEmail(body.userData);
         return respond(200, { message: "Correo enviado exitosamente" });
       } catch (emailErr) {
+        // `detail` sólo se expone para errores de validación propios del servicio de correo,
+        // no para fallos de SES/permisos, que podrían filtrar detalle de infraestructura.
+        var esValidacion = emailErr instanceof Error && emailErr.message.indexOf("Falta configurar") === 0;
         console.error("Error al enviar email:", emailErr);
-        return respond(500, { error: "Error al enviar el correo", detail: emailErr.message });
+        return respond(502, {
+          error: esValidacion ? emailErr.message : "No se pudo enviar el correo. Intenta más tarde.",
+        });
       }
     }
+
     var messages = body.messages;
     if (!messages || !Array.isArray(messages)) {
       return respond(400, { error: 'El body debe incluir { messages: [...] }' });
