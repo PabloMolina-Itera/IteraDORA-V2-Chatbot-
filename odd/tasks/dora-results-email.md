@@ -129,7 +129,7 @@ Lambda (Configuration → Environment variables):
   handler contra `userData` ausente. Aceptar ambos formatos de `respuestasDora`.
   Check: sintaxis con `node --check`; invocación real contra la Lambda publicada.
 
-- [ ] **T2 — Backend: `chat.ts` como proxy de la Lambda.**
+- [x] **T2 — Backend: `chat.ts` como proxy de la Lambda.**
   Route: inline (reescritura de un archivo). Reemplazar los ~350 líneas de lógica duplicada por un
   proxy delgado: si `LAMBDA_FUNCTION_URL` está definida, reenvía el body y devuelve la respuesta
   tal cual; si no, mantiene el camino in-process a Bedrock como fallback de desarrollo. Propagar
@@ -177,6 +177,20 @@ Lambda (Configuration → Environment variables):
   `correoCliente` antes de tocar SES, todo dato del usuario se escapa (`escapeHtml`), `respuestasDora`
   y `resultadosProfundos` se renderizan en tablas HTML, se agregó parte texto plano, y el handler
   rechaza `userData` ausente. Los errores de configuración propia se exponen al cliente; los de SES no.
+- **T2 — done.** `src/pages/api/chat.ts` pasa a ser un proxy delgado (~110 líneas en lugar de ~350
+  duplicadas): reenvía el body a la Lambda y devuelve su estado y payload sin reinterpretarlos.
+  Agrega timeout con `AbortController`, rechaza body no-objeto antes de salir a la red, y contiene
+  los fallos de transporte en un 502 con hint accionable. Se eliminó `@aws-sdk/client-bedrock-runtime`
+  de `dependencies` (ya nadie en `src/` hablaba con Bedrock directo) y se agregó `@types/node`.
+
+### Bug encontrado por la verificación end-to-end
+
+La primera versión leía la configuración sólo de `import.meta.env`. Compilaba y `tsc` pasaba, pero
+en el server compilado devolvía **503 siempre**: **Vite reemplaza `import.meta.env.X` estáticamente
+al compilar**, así que el valor queda congelado en build y la variable de runtime se ignora. La
+Function URL habría quedado inalcanzable en producción. El fix es leer `import.meta.env` **y**
+`process.env`: la primera sirve para `astro dev` (lee el `.env`), la segunda para el server node ya
+construido.
 
 ## Verification evidence
 
@@ -191,7 +205,18 @@ Lambda (Configuration → Environment variables):
   - sin `SES_FROM_EMAIL`/`SES_CC_EMAIL` → mensaje que nombra la variable faltante;
   - el camino de chat sigue intacto y no toca SES.
   El harness vive fuera del repo (en el directorio temporal), no es parte del proyecto.
+- T2 — `npx tsc --noEmit` → exit 0. `npm run build` → OK.
+- T2 — E2E contra el server Astro compilado con una Lambda simulada (23 aserciones, todas PASS):
+  - payload de chat y `SEND_EMAIL` reenviados **verbatim** (se comprueba que el body llega intacto);
+  - los estados de error de la Lambda se preservan (502 y 400 no se aplanan a 200);
+  - JSON inválido y array se rechazan con 400 **sin** llegar a la red;
+  - respuesta no-JSON de la Lambda → 502 sin filtrar el HTML crudo;
+  - Lambda colgada → 502 cortando a los ~2s según `LAMBDA_TIMEOUT_MS`; conexión rota → 502 sin
+    filtrar la URL interna;
+  - sin `LAMBDA_FUNCTION_URL` → 503 con hint que nombra la variable.
+  Este test es el que detectó el bug de `import.meta.env` descrito arriba.
+  El harness vive fuera del repo (en el directorio temporal), no es parte del proyecto.
 
 ## Next step
 
-T2: convertir `src/pages/api/chat.ts` en proxy delgado hacia la Function URL de la Lambda.
+T3: frontend — capturar los datos del formulario, registrar respuestas y enviar el informe.

@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "@astrojs/node": "^9.5.5",
-    "@aws-sdk/client-bedrock-runtime": "^3.1080.0",
     "@tailwindcss/vite": "^4.2.0",
     "astro": "^5.17.1",
     "marked": "^18.0.5",
     "tailwindcss": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3"
   }
 }
