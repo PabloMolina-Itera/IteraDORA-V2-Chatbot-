@@ -26,6 +26,8 @@ function initChatDiagnostico() {
   const recContainer = document.getElementById("rec-container")!;
   const btnRec = document.getElementById("btn-rec") as HTMLButtonElement;
   const btnEnviarCorreo = document.getElementById("btn-enviar-correo") as HTMLButtonElement;
+  const btnEnviarCorreoDeep = document.getElementById("btn-enviar-correo-deep") as HTMLButtonElement;
+  const formError = document.getElementById("form-error")!;
   const resultCard = document.getElementById("result-card")!;
   const resultContent = document.getElementById("result-content")!;
   const btnVolverChat = document.getElementById("btn-volver-chat")!;
@@ -47,6 +49,20 @@ function initChatDiagnostico() {
   let resultadoMostrado = false;
   let respuestasSi = 0;
   let preguntaActual = 0; // contador de preguntas (0 = no iniciado)
+
+  // ─── INFORME POR CORREO ───
+  // Datos del formulario y respuestas registradas, para el informe que envía la Lambda por SES.
+  let datosUsuario = { nombre: "", empresa: "", correo: "" };
+  let respuestas: { pregunta: string; respuesta: string }[] = [];
+  let respuestasDeep: { categoria: string; pregunta: string; respuesta: string }[] = [];
+  let resultadosDeep: Record<string, string> = {};
+  let puntajeDeep = "";
+  // Evita el envío duplicado: el resultado inicial puede alcanzarse por dos caminos distintos.
+  let informeEnviado = false;
+  let informeEnviadoDeep = false;
+  // Formato de correo deliberadamente simple: descarta entradas obviamente inválidas (espacios, sin
+  // @, sin dominio) sin pretender ser un validador RFC 5322 completo.
+  const EMAIL_RE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>.]{2,}$/;
 
   // ─── DIAGNÓSTICO PROFUNDO ───
   let deepDiagnosticActive = false;
@@ -122,6 +138,28 @@ function initChatDiagnostico() {
   }
 
   btnComenzar.addEventListener("click", () => {
+    const nombre = (document.getElementById("usuario-nombre") as HTMLInputElement)?.value.trim() || "";
+    const empresa = (document.getElementById("usuario-empresa") as HTMLInputElement)?.value.trim() || "";
+    const correo = (document.getElementById("usuario-correo") as HTMLInputElement)?.value.trim() || "";
+
+    // El correo es obligatorio: sin él no hay a dónde enviar el informe al completar.
+    if (!EMAIL_RE.test(correo)) {
+      formError.textContent = "Ingresá un correo electrónico válido para recibir tus resultados.";
+      formError.classList.remove("hidden");
+      const inputCorreo = document.getElementById("usuario-correo") as HTMLInputElement | null;
+      inputCorreo?.focus();
+      return;
+    }
+    formError.classList.add("hidden");
+
+    datosUsuario = { nombre, empresa, correo };
+    respuestas = [];
+    respuestasDeep = [];
+    resultadosDeep = {};
+    puntajeDeep = "";
+    informeEnviado = false;
+    informeEnviadoDeep = false;
+
     btnComenzar.disabled = true;
     btnComenzar.textContent = "Comenzando...";
     setTimeout(() => {
@@ -414,6 +452,84 @@ function initChatDiagnostico() {
     resultCard.scrollIntoView({ behavior: "smooth" });
   }
 
+  // ─── ENVÍO DEL INFORME POR CORREO ───
+  // El navegador NO habla con SES ni con la Lambda: postea a /api/chat, el backend reenvía a la
+  // Lambda y ahí se emite el correo. Nunca fallar el diagnóstico por esto: si el envío falla, el
+  // resultado ya está en pantalla y el botón permite reintentar.
+  function feedbackBoton(boton: HTMLButtonElement | null, texto: string, exito: boolean) {
+    if (!boton) return;
+    if (!boton.dataset.textoOriginal) boton.dataset.textoOriginal = boton.textContent || "Enviar";
+    boton.textContent = texto;
+    boton.disabled = true;
+    window.setTimeout(() => {
+      boton.textContent = boton.dataset.textoOriginal || "Enviar resultados";
+      boton.disabled = false;
+      boton.title = exito ? "" : "No se pudo enviar el correo. Podés volver a intentarlo.";
+    }, 3000);
+  }
+
+  async function enviarInforme(
+    tipo: "inicial" | "profundo",
+    opciones: { forzar?: boolean; boton?: HTMLButtonElement | null } = {}
+  ) {
+    if (!EMAIL_RE.test(datosUsuario.correo)) {
+      console.warn("No hay un correo válido registrado: no se envía el informe.");
+      return false;
+    }
+    // El resultado inicial puede alcanzarse por más de un camino; enviarlo una sola vez.
+    if (!opciones.forzar && (tipo === "inicial" ? informeEnviado : informeEnviadoDeep)) return false;
+
+    const userData: Record<string, unknown> = {
+      nombre: datosUsuario.nombre,
+      empresa: datosUsuario.empresa,
+      correoCliente: datosUsuario.correo,
+      tipo,
+    };
+
+    if (tipo === "profundo") {
+      userData.nivelDora = deepDiagnosticLevel;
+      userData.puntaje = puntajeDeep ? `${puntajeDeep}%` : "";
+      userData.resultadosProfundos = resultadosDeep;
+      // El código de categoría ya es visible en la pregunta ([CV], [BD], ...) y la tabla de
+      // puntajes de arriba trae los nombres completos, así que no hace falta duplicar el mapa.
+      userData.respuestasDora = respuestasDeep.map((r) => ({
+        pregunta: `[${r.categoria}] ${r.pregunta}`,
+        respuesta: r.respuesta,
+      }));
+    } else {
+      const porcentaje = Math.round((respuestasSi / TOTAL_PREGUNTAS) * 100);
+      userData.nivelDora = computeLevel();
+      userData.puntaje = `${respuestasSi}/${TOTAL_PREGUNTAS} (${porcentaje}%)`;
+      userData.respuestasDora = respuestas;
+    }
+
+    if (opciones.boton) feedbackBoton(opciones.boton, "Enviando…", true);
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "SEND_EMAIL", userData }),
+      });
+
+      if (!res.ok) {
+        const detalle = await res.json().catch(() => null);
+        console.error("El backend no pudo enviar el informe:", res.status, detalle);
+        feedbackBoton(opciones.boton || null, "No se pudo enviar", false);
+        return false;
+      }
+
+      if (tipo === "inicial") informeEnviado = true;
+      else informeEnviadoDeep = true;
+      feedbackBoton(opciones.boton || null, "¡Enviado!", true);
+      return true;
+    } catch (err) {
+      console.error("Falló la llamada al backend para enviar el informe:", err);
+      feedbackBoton(opciones.boton || null, "No se pudo enviar", false);
+      return false;
+    }
+  }
+
   // ─── PARSERS DIAGNÓSTICO PROFUNDO ───
   function esPreguntaProfunda(content: string): boolean {
     return /\[(CV|BD|EC|AP|IS|IC)\]\s+Pregunta \d+ de \d+/im.test(content);
@@ -627,8 +743,18 @@ function initChatDiagnostico() {
       if (content.toUpperCase() === "SÍ" || content.toUpperCase() === "SI") {
         deepRespuestasSi[deepCategoriaActual] = (deepRespuestasSi[deepCategoriaActual] || 0) + 1;
       }
+      // Guardar la respuesta con su categoría para el informe. Los índices son los de la pregunta
+      // que se está respondiendo: todavía no fueron incrementados en este punto.
+      const preguntaDeep = DEEP_PREGUNTAS[deepCategoriaActual]?.[deepPreguntaIdx];
+      if (preguntaDeep) {
+        respuestasDeep.push({ categoria: deepCategoriaActual, pregunta: preguntaDeep, respuesta: content });
+      }
     } else {
       if (content.toUpperCase() === "SÍ" || content.toUpperCase() === "SI") respuestasSi++;
+      // Sólo cuenta como respuesta del diagnóstico una pregunta efectivamente mostrada.
+      if (state === "inProgress" && preguntaActual < TOTAL_PREGUNTAS) {
+        respuestas.push({ pregunta: PREGUNTAS[preguntaActual], respuesta: content });
+      }
     }
 
     // Mostrar mensaje limpio al usuario (sin prefijo técnico)
@@ -658,6 +784,11 @@ function initChatDiagnostico() {
         let nivel = "Fundacional";
         if (porcentaje > 66) nivel = "Avanzado";
         else if (porcentaje > 33) nivel = "Intermedio";
+
+        // Informe automático: el dato ya está completo, así que se dispara acá y en paralelo con
+        // el resumen opcional de la IA. Si se esperara al `fetch` de abajo, una IA lenta o caída
+        // retrasaría el correo y el usuario podría cerrar la pestaña antes de que salga.
+        void enviarInforme("inicial");
 
         // Intentar obtener resumen personalizado de la IA
         try {
@@ -700,9 +831,15 @@ function initChatDiagnostico() {
 
     // ── DIAGNÓSTICO PROFUNDO: avance 100% client-side ──
     if (deepDiagnosticActive) {
+      // Bloquear el reingreso mientras avanza la pregunta. Sin esto un doble clic rápido durante
+      // la animación cuenta dos veces la misma respuesta: inflaba el puntaje en pantalla y,
+      // con el informe por correo, mandaría datos falsos.
+      isLoading = true;
+      setButtonsLoading(true);
       deepPreguntaIdx++;
       await delay(300);
       mostrarSiguientePreguntaDeep();
+      setButtonsLoading(false);
       isLoading = false;
       return;
     }
@@ -759,6 +896,8 @@ function initChatDiagnostico() {
 
         showRecButton();
         messages.push({ role: "assistant", content: fullReply });
+        // Mismo resultado que el camino local, pero llegado por la API: el guard de envío evita el doble.
+        void enviarInforme("inicial");
       } else if (resultadoMostrado) {
         // Renderizar recomendaciones como dashboard profesional
         const dashboard = renderDashboard(fullReply);
@@ -888,11 +1027,18 @@ function initChatDiagnostico() {
         ? `Tu organización está en un nivel intermedio (${promedio}%). Las prácticas de ${nombresCat[mejores[0].cat]} destacan positivamente, pero ${nombresCat[peores[0].cat]} necesita un plan de acción claro.`
         : `Tu organización está en nivel fundacional (${promedio}%). Prioriza ${nombresCat[peores[0].cat]} y ${nombresCat[peores[1].cat]} como base, luego avanza hacia las demás categorías.`;
 
+    // A nivel de módulo para que el envío del informe y el botón de reenvío puedan leerlos
+    // aunque el cálculo original ya haya salido de su scope.
+    resultadosDeep = { ...resultados };
+    puntajeDeep = String(promedio);
+
     const marcadores = Object.entries(resultados).map(([k, v]) => `${k}: ${v}`).join("\n");
     const markdown = `=== RESULTADOS DEL DIAGNÓSTICO PROFUNDO ===\n${marcadores}\n\n**Fortalezas**\n${fortalezas}\n\n**Oportunidades de Mejora**\n${oportunidades}\n\n**Conclusión**\n${conclusion}`;
 
     addMessage("assistant", "✅ Diagnóstico profundo completado.");
     setTimeout(() => showDeepResultCard(markdown), 600);
+    // Informe automático: no se espera al clic del usuario. No bloquea la UI.
+    void enviarInforme("profundo");
   }
 
   btnDeep.addEventListener("click", () => {
@@ -934,6 +1080,15 @@ function initChatDiagnostico() {
 
   btnSalirDeep.addEventListener("click", () => {
     window.location.href = "/";
+  });
+
+  // Los botones quedan como reenvío manual: el correo ya salió automático al completar.
+  btnEnviarCorreo?.addEventListener("click", () => {
+    void enviarInforme("inicial", { forzar: true, boton: btnEnviarCorreo });
+  });
+
+  btnEnviarCorreoDeep?.addEventListener("click", () => {
+    void enviarInforme("profundo", { forzar: true, boton: btnEnviarCorreoDeep });
   });
 
   // ─── PREVIEW: ?preview en la URL muestra el dashboard con datos de ejemplo ───

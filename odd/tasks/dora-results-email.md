@@ -52,13 +52,16 @@ el rol de IAM listo.
 ## Authorized scope
 
 `lambda/index.js`, `src/pages/api/chat.ts`, `src/scripts/chat-diagnostico.ts`,
-`lambda/test-email.js` (raíz), `lambda/README.md`, `.env.example`.
+`src/components/ChatDiagnostico.astro`, `test-email.js` (raíz), `lambda/README.md`,
+`.env.example`, `package.json`.
 
 ## Constraints
 
 - Los artefactos técnicos van en inglés (código, comentarios, copy de UI).
 - Cambios mínimos: no refactorizar lógica de chat que ya funciona.
-- El frontend debe seguir funcionando si la Lambda no está configurada (fallback local ya existente).
+- El diagnóstico y su envío por correo corren 100% en el cliente, así que siguen funcionando
+  aunque la Lambda no esté configurada; lo que falla sin `LAMBDA_FUNCTION_URL` es el chat y el
+  correo.
 - El navegador NUNCA debe llamar directo a la Function URL: sin credenciales AWS en cliente, el
   backend es el que habla con la Lambda.
 
@@ -109,7 +112,7 @@ Backend Astro (server-only, sin prefijo `PUBLIC_`):
 
 | Variable           | Uso                                            |
 | ------------------ | ---------------------------------------------- |
-| `LAMBDA_FUNCTION_URL` | Function URL de `IteraDORA-Lambda`. Sin valor ⇒ fallback in-process a Bedrock. |
+| `LAMBDA_FUNCTION_URL` | Function URL de `IteraDORA-Lambda`. Sin valor ⇒ el chat devuelve `503` (ver T2). |
 | `LAMBDA_TIMEOUT_MS`   | Timeout del proxy. Default `9000`.          |
 
 Lambda (Configuration → Environment variables):
@@ -131,17 +134,23 @@ Lambda (Configuration → Environment variables):
 
 - [x] **T2 — Backend: `chat.ts` como proxy de la Lambda.**
   Route: inline (reescritura de un archivo). Reemplazar los ~350 líneas de lógica duplicada por un
-  proxy delgado: si `LAMBDA_FUNCTION_URL` está definida, reenvía el body y devuelve la respuesta
-  tal cual; si no, mantiene el camino in-process a Bedrock como fallback de desarrollo. Propagar
-  errores y aplicar timeout.
+  proxy delgado que reenvía el body a `LAMBDA_FUNCTION_URL` y devuelve la respuesta tal cual,
+  propagando errores y aplicando timeout. Propagar errores y aplicar timeout.
   Check: `npm run build` (Astro compila el route) + prueba manual de ambos caminos.
 
-- [ ] **T3 — Frontend: captura de datos y envío automático.**
-  Route: delegated writer. Leer `usuario-nombre` / `usuario-empresa` / `usuario-correo` al pulsar
-  "Comenzar diagnóstico", validar el correo, registrar `respuestas[]` y `deepRespuestas[]`, agregar
-  `enviarReporte(tipo)`, llamarla al completar el diagnóstico inicial y el profundo, y cablear los
-  dos botones como reenvío manual con realimentación visual.
-  Check: `npm run build` + recorrido manual de ambos diagnósticos.
+  **Nota (decisión posterior a la redacción):** el plan original preveía conservar Bedrock
+  in-process como fallback de desarrollo. Se descartó: mantener las dos implementaciones era
+  justamente la duplicación que causaba la divergencia entre la Lambda y el backend. Ahora hay una
+  sola fuente de verdad y sin `LAMBDA_FUNCTION_URL` el chat responde `503` con un hint que nombra la
+  variable. El diagnóstico (y sus correos) nunca dependió de esto: corre 100% en el cliente.
+
+- [x] **T3 — Frontend: captura de datos y envío automático.**
+  Route: inline (el subagente writer falló por límite del proveedor; se hizo en el hilo principal
+  con las mismas reglas de writer único). Leer `usuario-nombre` / `usuario-empresa` /
+  `usuario-correo` al pulsar "Comenzar diagnóstico", validar el correo, registrar `respuestas[]` y
+  `respuestasDeep[]`, agregar `enviarInforme(tipo)`, llamarla al completar el diagnóstico inicial y
+  el profundo, y cablear los dos botones como reenvío manual con realimentación visual.
+  Check: `npm run build` + recorrido automatizado de ambos diagnósticos (ver evidencia).
 
 - [ ] **T4 — Configuración y documentación.**
   Route: inline. `.env.example` con las variables del backend, sección de SES en `lambda/README.md`
@@ -159,7 +168,8 @@ Lambda (Configuration → Environment variables):
 - [x] Un correo inválido produce un error claro, no una excepción de SES.
 - [x] `Source` y `Cc` salen de variables de entorno; no quedan direcciones hardcodeadas.
 - [x] El backend reenvía a la Lambda cuando `LAMBDA_FUNCTION_URL` está definida.
-- [x] Sin `LAMBDA_FUNCTION_URL` el chat sigue funcionando por el camino in-process.
+- [x] Sin `LAMBDA_FUNCTION_URL` el chat responde `503` con un hint accionable (no hay fallback
+      in-process: ver la nota de T2).
 - [x] El navegador no llama directo a la Function URL.
 
 ## Route declaration
@@ -182,6 +192,27 @@ Lambda (Configuration → Environment variables):
   Agrega timeout con `AbortController`, rechaza body no-objeto antes de salir a la red, y contiene
   los fallos de transporte en un 502 con hint accionable. Se eliminó `@aws-sdk/client-bedrock-runtime`
   de `dependencies` (ya nadie en `src/` hablaba con Bedrock directo) y se agregó `@types/node`.
+- **T3 — done.** `src/scripts/chat-diagnostico.ts` lee y valida el formulario al comenzar, guarda
+  `datosUsuario`, registra `respuestas[]` (inicial) y `respuestasDeep[]` con su categoría, calcula
+  `puntaje`/`resultadosDeep`/`puntajeDeep` localmente, dispara `enviarInforme(tipo)` automáticamente
+  al completar cada diagnóstico y cablea los dos botones como reenvío con realimentación (texto
+  original, deshabilitado durante el envío, mensaje de error si falla). `ChatDiagnostico.astro`
+  suma un `form-error` reutilizable. El payload cumple el contrato compartido con la Lambda.
+
+### Bugs encontrados por la verificación end-to-end de T3
+
+Ambos los encontró el recorrido automatizado, no la lectura del código:
+
+1. **Doble clic en el diagnóstico profundo inflaba el puntaje.** `sendMessage` fijaba `isLoading` en
+   la rama del diagnóstico inicial pero **no** en la del profundo, así que un segundo clic durante
+   la animación de 300 ms pasaba el guard y contaba la misma respuesta dos veces. Antes sólo
+   corrompía el puntaje en pantalla; con T3 el dato va por correo, así que el informe habría salido
+   falso. Fix: `isLoading` + `setButtonsLoading` alrededor del avance.
+2. **El correo quedaba bloqueado detrás de la llamada opcional a la IA.** El informe se disparaba
+   *después* del `fetch` que pide el resumen de Bedrock. Con la IA lenta o caída, el correo no
+   salía a tiempo y el usuario podía cerrar la pestaña antes. Fix: `enviarInforme` se dispara
+   apenas el resultado local está calculado, en paralelo con ese `fetch`. El diagnóstico y sus
+   respuestas ya están completos en ese punto.
 
 ### Bug encontrado por la verificación end-to-end
 
@@ -216,7 +247,39 @@ construido.
   - sin `LAMBDA_FUNCTION_URL` → 503 con hint que nombra la variable.
   Este test es el que detectó el bug de `import.meta.env` descrito arriba.
   El harness vive fuera del repo (en el directorio temporal), no es parte del proyecto.
+- T3 — `npx tsc --noEmit` → exit 0. `npm run build` → OK.
+- T3 — recorrido del flujo en jsdom contra el HTML compilado real (bundling del módulo de
+  producción con esbuild, `fetch` simulado): las 8 etapas en PASS.
+  - correo inválido y correo vacío bloquean el arranque, muestran el error y no envían nada;
+  - diagnóstico inicial: 1 envío automático al completar, `tipo = inicial`, puntaje `X/11 (Y%)`,
+    nivel heredado, las 11 respuestas en orden y con el texto real de cada pregunta;
+  - reenvío manual: segundo correo, botón deshabilitado durante el envío, luego rehabilitado con
+    su texto original;
+  - diagnóstico profundo: 1 envío automático con los 6 puntajes por categoría, las respuestas
+    profundas etiquetadas con su categoría, y reenvío propio;
+  - envío fallido (502): reintenta, rehabilita el botón, no muestra éxito y deja el resultado en
+    pantalla;
+  - las preguntas del diagnóstico no van al backend.
+- T3 — **cadena completa** (jsdom → server Astro compilado → `lambda/index.js` real con SES
+  interceptado): todas las aserciones en PASS. Prueban el contrato de punta a punta:
+  - `Source` desde `SES_FROM_EMAIL`, `To` = correo del usuario, `Cc` = `SES_CC_EMAIL`,
+    `Reply-To` desde `SES_REPLY_TO`, asunto con la empresa;
+  - la empresa `<S.A.` llega escapada y no aparece HTML crudo;
+  - se renderizan las 11 respuestas y el puntaje; parte texto plano poblada;
+  - el correo profundo lista las 6 categorías con `X/Y` y badge de porcentaje, y ninguno supera su
+    total;
+  - el reenvío manual también llega a SES.
+  El harness vive fuera del repo (en el directorio temporal), no es parte del proyecto.
+
+### Pendiente de verificación (no se puede cerrar localmente)
+
+- **Invocación real contra la Lambda publicada.** El check de T1 pide eso y sigue pendiente: faltan
+  la Function URL y los valores `SES_FROM_EMAIL` / `SES_CC_EMAIL`, que sólo el usuario puede
+  configurar. Todo lo anterior se verificó con la Lambda real invocada en proceso y SES
+  interceptado, lo que cubre la lógica pero **no** la identidad, el rol de IAM ni la entrega real.
+- **Despliegue del backend.** `amplify.yml` sigue subiendo sólo `dist/client` (fuera de alcance por
+  decisión explícita). Sin un host que sirva `dist/server`, `/api/chat` no existe en producción.
 
 ## Next step
 
-T3: frontend — capturar los datos del formulario, registrar respuestas y enviar el informe.
+T4: `.env.example`, sección de SES en `lambda/README.md` y `test-email.js` al contrato nuevo.
