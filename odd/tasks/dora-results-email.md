@@ -308,8 +308,126 @@ construido.
 - **Despliegue del backend.** `amplify.yml` sigue subiendo sólo `dist/client` (fuera de alcance por
   decisión explícita). Sin un host que sirva `dist/server`, `/api/chat` no existe en producción.
 
+## T5 — Firma SigV4 en el proxy (cierre de la exposición de la Function URL)
+
+### Problema
+
+Una sonda real contra la Function URL publicada (`POST {}` con cuerpo JSON válido) devolvió
+`400 {"error":"El body debe incluir { messages: [...] }"}`, que es el mensaje de nuestra propia
+Lambda. Eso prueba que **la Function URL tiene Auth=NONE y ejecuta código sin autenticación**.
+
+Consecuencias, ambas alcanzables por cualquiera que conozca la URL:
+
+- gasto de Bedrock ajeno, a costa del proyecto;
+- **envío de correo desde la identidad SES verificada**, es decir suplantación de un remitente
+  verificado con la reputación de IteraDORA detrás.
+
+El comentario del propio proxy (líneas 8-10 de `src/pages/api/chat.ts`) ya anticipaba que sin
+esta capa habría que exponer la Function URL con Auth=NONE. Faltaba activar el otro lado.
+
+### Alcance
+
+- Firmar con SigV4 la invocación del proxy a la Lambda, servicio `lambda`, región `AWS_REGION`
+  (default `us-east-1`).
+- Credenciales server-only: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`
+  opcional. Resolver por `fromEnv()` cuando estén presentes y por el provider por defecto en
+  caso contrario, para permitir rol de instancia en deployments con IAM.
+- **Fallar cerrado**: si no se pueden resolver credenciales, `503` con hint accionable. Nunca
+  enviar una petición sin firmar; un fallback "sin firmar si no hay credenciales" reintroduciría
+  exactamente la exposición que esta tarea cierra.
+- Documentar las variables nuevas y el cambio de tipo de auth en `lambda/README.md`.
+
+### Fuera de alcance
+
+- Cambiar el tipo de auth de la Function URL en AWS: eso lo hace el usuario en la consola.
+- IAM: la política que permite `lambda:InvokeFunctionUrl` la agrega el usuario.
+
+### Criterios de aceptación
+
+1. La petición saliente a la Lambda incluye `Authorization: AWS4-HMAC-SHA256 ...` con el scope de
+   credencial correcto, y `x-amz-date`.
+2. Sin credenciales resolubles, el proxy devuelve `503` y **no** emite ninguna petición.
+3. El body firmado y el body enviado son el mismo string, byte a byte.
+4. `npx tsc --noEmit` y `npm run build` siguen en verde.
+5. El harness de proxy existente sigue verde: la ruta sin firmar no cambia.
+
+### Verificación prevista
+
+- Harness fuera del repo: `LAMBDA_FUNCTION_URL` real + credenciales ficticias. La Lambda pública
+  responde `400` a una petición sin firmar (Auth=NONE) y `403 InvalidSignature` a la firmada con
+  credenciales falsas. Esa diferencia es la prueba de que la firma se emite y de que AWS la valida.
+- Estructura de la firma: prefijo `AWS4-HMAC-SHA256`, `Credential=.../us-east-1/lambda/aws4_request`
+  y `SignedHeaders` incluyendo `content-type` y `host`.
+
+### Evidencia de verificación — T5 (commit 3d4fd1e)
+
+**Estado: cerrado del lado cliente. La exposición sigue abierta hasta cambiar el auth en AWS.**
+
+- `npx tsc --noEmit -p tsconfig.json` → `EXIT=0`, sin salida.
+- `npm run build` → `EXIT=0`, "Server built in 3.10s / Complete!".
+- Harness propio del writer: 44 pass / 0 fail. Harness de proxy preexistente de T3/T4: 24/24 PASS.
+- Firma emitida con estructura correcta:
+  `AWS4-HMAC-SHA256 Credential=.../20261002/us-east-1/lambda/aws4_request`,
+  `SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date[;x-amz-security-token]`,
+  y `x-amz-content-sha256` igual al `sha256(body)` byte a byte.
+- Fail closed verificado: sin credenciales resolubles devuelve `503` y emite **cero** peticiones
+  upstream, en 426 ms (timeout de IMDS acotado a 1 s).
+
+**La predicción anterior era incorrecta y quedó corregida.** Se esperaba `403 InvalidSignature` en
+la petición firmada. No ocurre, y la causa no es que la firma falte: es que **`AuthType=NONE` no
+valida SigV4 en absoluto**. Se comprobó con tres sondas independientes contra la URL real:
+
+| Sonda | Respuesta |
+| --- | --- |
+| `POST {}` sin firmar | `400 {"error":"El body debe incluir { messages: [...] }"}` |
+| `POST {}` firmado con credenciales falsas | `400`, respuesta idéntica |
+| `POST {}` firmado con los 64 bytes de firma en cero | `400`, respuesta idéntica |
+
+Una firma deliberadamente corrupta que AWS validara daría `403`. Que sea idéntica a la petición
+sin firmar prueba que la verificación no ocurre: la Lambda se ejecuta siempre. El proxy emite la
+firma correctamente, pero hoy nadie la verifica.
+
+**Consecuencia operativa, y es lo que importa:** el trabajo de cliente está listo, pero **cambiar
+el tipo de auth a `AWS_IAM` es lo que cierra el agujero**, y sigue pendiente. Mientras tanto la
+Function URL continúa siendo invocable por cualquiera.
+
+**Desvío del brief, aceptado con motivo:** `fromEnv()` no existe en
+`@aws-sdk/credential-provider-node@3.972` (sólo exporta `defaultProvider`); se leen
+`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` de `process.env`
+directamente. Confiar en el brief habría roto `tsc`.
+
+**Desvío del patrón de lectura de env, aceptado con motivo:** credenciales y `AWS_REGION` se leen
+sólo de `process.env`, no de `import.meta.env`. Vite congela `import.meta.env` dentro del bundle,
+así que leer una clave por ahí la escribiría en el artefacto desplegado. `LAMBDA_FUNCTION_URL` y
+`LAMBDA_TIMEOUT_MS` conservan el patrón dual.
+
+**Pendiente detectado en revisión, no corregido:** `new URL(LAMBDA_FUNCTION_URL)` quedó fuera del
+`try` en `forwardToLambda`, así que una URL malformada produciría una excepción no manejada en vez
+de un error limpio. Es una regresión de robustez menor respecto de la versión anterior, que sí
+tenía el `fetch` dentro del `try`.
+
+### Modo TDD y checks
+
+El proyecto no tiene runner de tests (`package.json` no define script `test`), así que TDD estricto
+no está disponible. Los checks son los mismos del patrón ya usado en T1-T4: `node --check`,
+`tsc --noEmit`, `npm run build` y harnesses de comportamiento en el directorio temporal.
+
+### Route declaration
+
+- **Delegated writer** (1 escritor). Dispara el writer trigger: toca `src/pages/api/chat.ts`,
+  `package.json`, `package-lock.json` y `lambda/README.md` — 3 archivos no triviales más lockfile.
+- API de firma verificada contra la documentación oficial de `@aws-sdk/signature-v4` antes de
+  escribir: constructor `{ service, region, credentials, sha256 }` y `sign(toSign: HttpRequest)`.
+
 ## Next step
 
-Todo el alcance code-side está cerrado. Queda lo que no se puede verificar ni escribir desde acá:
-configurar `LAMBDA_FUNCTION_URL` + `SES_FROM_EMAIL` + `SES_CC_EMAIL`, y decidir dónde se despliega
-el backend SSR para que `/api/chat` exista en producción.
+1. **Usuario, y es lo que cierra el agujero:** cambiar el tipo de auth de la Function URL a
+   `AWS_IAM` en la consola. Hasta que eso pase, la firma que emite el proxy no la verifica nadie y
+   la URL sigue siendo invocable por cualquiera.
+2. **Usuario:** subir el ZIP con el código nuevo (la Lambda publicada corre el código viejo, sin
+   soporte `SEND_EMAIL`) y setear `SES_FROM_EMAIL` y `SES_CC_EMAIL`. No setear `AWS_REGION`: la
+   Lambda ya está en `us-east-1`.
+3. Confirmar que el rol de la Lambda tenga `lambda:InvokeFunctionUrl`, necesario para que una
+   Function URL con `AWS_IAM` pueda invocarse.
+4. Decidir dónde se despliega el backend SSR para que `/api/chat` exista en producción
+   (`amplify.yml` sigue subiendo sólo `dist/client`).
