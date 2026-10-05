@@ -419,15 +419,72 @@ no está disponible. Los checks son los mismos del patrón ya usado en T1-T4: `n
 - API de firma verificada contra la documentación oficial de `@aws-sdk/signature-v4` antes de
   escribir: constructor `{ service, region, credentials, sha256 }` y `sign(toSign: HttpRequest)`.
 
+## Hosting del backend SSR (investigado, decisión pendiente del usuario)
+
+`amplify.yml` despliega sólo `dist/client`, así que `/api/chat` no existe en producción. Se
+investigó el destino del server SSR.
+
+**Amplify Hosting sí soporta SSR para Astro**, pero no con `@astrojs/node`: requiere el adapter
+comunitario `astro-aws-amplify` (AWS no mantiene uno propio). El bloqueo real es de versiones: el
+proyecto está en Astro 5.17.1 y la única versión del adapter compatible es `0.2.2`, de 2025-09-17,
+aproximadamente un año vieja. Las versiones actuales exigen Astro 6+.
+
+Es decir, la decisión real no es si Amplify puede, sino si se acepta fijar un adapter comunitario
+que no se puede actualizar sin subir Astro de major.
+
+Opciones para alojar `dist/server/entry.mjs`, un server HTTP Node de ~366 KB:
+
+| Opción | Carga operativa | Encaja |
+| --- | --- | --- |
+| Imagen de contenedor Lambda + Function URL | Baja: ECR, Lambda, Function URL, execution role | Sí, y da credenciales temporales por rol |
+| Amplify SSR | La más baja | Sólo si se acepta el adapter fijado |
+| Fargate + ALB | **Alta**: VPC, subnets, SG, ALB, cluster, task role, ECR | Descartada: con `AuthType=AWS_IAM` exige VPC endpoint o NAT Gateway, y NAT se factura por hora aunque no se use |
+| App Runner | Media | No verificada en esta investigación |
+
+Comando de arranque y variables, según la documentación de `@astrojs/node`:
+`node ./dist/server/entry.mjs`, con `HOST=0.0.0.0` explícito porque la documentación no declara el
+default y ECS/Lambda exigen una dirección no loopback. El server standalone sirve también
+`dist/client`, así que no hace falta S3/CloudFront por separado.
+
+Sobre credenciales: **no hacen falta claves de larga duración**. Amplify provee un IAM SSR Compute
+role con credenciales temporales, y AWS recomienda explícitamente no guardar credenciales en
+variables de entorno. En Fargate el equivalente es el task role.
+
+**No verificado:** si firmar SigV4 contra la Function URL propia funciona con las credenciales del
+compute role de Amplify (plausible, pero no documentado). Y no se encontró documentación de
+"Amplify container hosting" como capacidad de producción; no debe asumirse.
+
+## T6 — Cierre del hueco de despliegue, lado código (commit pendiente)
+
+- `package.json`: agregado script `start` con `node ./dist/server/entry.mjs`. Antes no había forma
+  de lanzar el server construido.
+- `src/pages/api/chat.ts`: `new URL(LAMBDA_FUNCTION_URL)` quedó dentro de un guard propio. Estaba
+  fuera del `try` y una URL malformada habría lanzado una excepción sin manejar. Cierra la
+  regresión de robustez detectada en la revisión de T5.
+- `amplify.yml` **no** se tocó: el destino del hosting es una decisión de infraestructura que
+  corresponde al usuario.
+
+### Evidencia de verificación — T6
+
+Verificación end-to-end contra el **build de producción** levantado localmente, sin credenciales de
+AWS en esta máquina:
+
+| Prueba | Resultado | Qué demuestra |
+| --- | --- | --- |
+| `npm run start` + `POST /api/chat` sin credenciales | `503` con el hint de `AWS_IAM` | El server de producción sirve `/api/chat` y falla cerrado antes de contactar la Lambda |
+| `npm run start` + credenciales falsas | `400 {"error":"El body debe incluir { messages: [...] }"}` | Mensaje de la **Lambda real**: la cadena completa funciona desde el build de producción, con firma SigV4 incluida |
+
+Que la segunda prueba devuelva el mensaje de la Lambda y no el del proxy es lo que prueba que la
+petición llegó upstream. `tsc` y `build` en `EXIT=0`.
+
 ## Next step
 
-1. **Usuario, y es lo que cierra el agujero:** cambiar el tipo de auth de la Function URL a
-   `AWS_IAM` en la consola. Hasta que eso pase, la firma que emite el proxy no la verifica nadie y
-   la URL sigue siendo invocable por cualquiera.
-2. **Usuario:** subir el ZIP con el código nuevo (la Lambda publicada corre el código viejo, sin
+1. **Usuario:** subir el ZIP con el código nuevo (la Lambda publicada corre el código viejo, sin
    soporte `SEND_EMAIL`) y setear `SES_FROM_EMAIL` y `SES_CC_EMAIL`. No setear `AWS_REGION`: la
-   Lambda ya está en `us-east-1`.
-3. Confirmar que el rol de la Lambda tenga `lambda:InvokeFunctionUrl`, necesario para que una
-   Function URL con `AWS_IAM` pueda invocarse.
-4. Decidir dónde se despliega el backend SSR para que `/api/chat` exista en producción
-   (`amplify.yml` sigue subiendo sólo `dist/client`).
+   Lambda ya está en `us-east-1`. Probar el envío **antes** de cambiar la auth, mientras la URL
+   sigue siendo invocable sin credenciales.
+2. **Usuario:** cambiar el tipo de auth de la Function URL a `AWS_IAM`. Eso es lo que hace que la
+   firma pase a verificarse, y es el único paso que cierra la exposición.
+3. Confirmar que el rol de la Lambda tenga `lambda:InvokeFunctionUrl`.
+4. **Elegir el destino del backend SSR** con la comparación de arriba. Es la decisión que bloquea
+   todo lo demás de producción.

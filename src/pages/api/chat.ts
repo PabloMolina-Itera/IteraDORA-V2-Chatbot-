@@ -174,7 +174,19 @@ async function forwardToLambda(payload: unknown): Promise<Response> {
   // firmar un payload y mandar otro es la causa clásica de `InvalidSignature`.
   const body = JSON.stringify(payload);
 
-  const url = new URL(LAMBDA_FUNCTION_URL);
+  // La URL se parsea en un guard propio: una URL malformada es un error de configuración, y sin
+  // esto `new URL` lanzaría fuera del try del `fetch` y sin manejar.
+  let url: URL;
+  try {
+    url = new URL(LAMBDA_FUNCTION_URL);
+  } catch {
+    console.error("LAMBDA_FUNCTION_URL no es una URL válida:", LAMBDA_FUNCTION_URL);
+    return json(503, {
+      error: "El asistente no está disponible en este momento.",
+      hint: "LAMBDA_FUNCTION_URL no es una URL válida.",
+    });
+  }
+
   const signer = await buildSigner();
   if (!signer) {
     // Fail closed: sin firma NO se manda nada. Un fallback sin firma reabriría exactamente la
