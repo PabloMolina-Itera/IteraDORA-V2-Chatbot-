@@ -419,10 +419,100 @@ no está disponible. Los checks son los mismos del patrón ya usado en T1-T4: `n
 - API de firma verificada contra la documentación oficial de `@aws-sdk/signature-v4` antes de
   escribir: constructor `{ service, region, credentials, sha256 }` y `sign(toSign: HttpRequest)`.
 
-## Hosting del backend SSR (investigado, decisión pendiente del usuario)
+## Hosting del backend SSR — BLOQUEADO por rutas absolutas embebidas en el build
 
-`amplify.yml` despliega sólo `dist/client`, así que `/api/chat` no existe en producción. Se
-investigó el destino del server SSR.
+`amplify.yml` despliega sólo `dist/client`, así que `/api/chat` no existe en producción.
+
+Se evaluó Amplify compute como destino y **la vía es técnicamente viable**, pero se encontró un
+blocker en el artefacto actual. No se escribió `amplify.yml` porque una config que no arranca es
+peor que ninguna.
+
+### Lo que sí quedó verificado
+
+El layout que exige la deployment specification es alcanzable sin el adapter comunitario:
+
+```
+.amplify-hosting/
+  static/                 -> estáticos públicos
+  compute/default/        -> entry point + node_modules + client/
+  deploy-manifest.json    -> rutas y metadata
+```
+
+- El entry point es declarativo: `deploy-manifest.json` → `computeResources[0].entrypoint`. No hay
+  convención obligatoria de nombre; `entry.mjs` es válido.
+- Ruteo híbrido por path funciona: `/api/*` a Compute, `/*` a Static, sólo la última regla catch-all.
+- El SSR Compute role aporta credenciales temporales, así que no hacen falta claves de larga
+  duración ni firma SigV4 a mano: el SDK resuelve la cadena de credenciales solo.
+- `entry.mjs` **respeta `PORT`**: verificado que con `PORT=3000` escucha en 3000, que es lo que
+  exige la spec.
+- Bundle de compute con `node_modules` completo: **159 MB sin comprimir**, dentro del límite de
+  220 MB.
+- `dist/server` **no** es autocontenido: importa `devalue`, `html-escaper`, `mrmime`, `piccolore` y
+  `cookie` en forma bare. Sin `node_modules` en el bundle, el server muere al importar.
+- Layout verificado end-to-end: bundle ensamblado con `dist/client` + `dist/server` + `node_modules`
+  → `POST /api/chat` devuelve el `400` de la Lambda real y `GET /` devuelve `200`.
+
+### El blocker
+
+`dist/server/entry.mjs` y `manifest_*.mjs` **embeben rutas absolutas de la máquina que compiló**:
+
+```
+"client": "file:///C:/Users/Yuly%20%C3%81lvarez/Documents/.../dist/client/"
+```
+
+El manifest además lleva `cacheDir`, `srcDir`, `outDir`, `publicDir` y `buildClientDir` con la misma
+base. Verificado que esa ruta **existe en el disco del developer** — por eso el server levanta y
+responde localmente — pero no existe dentro del compute de Amplify.
+
+Síntoma: el proceso **queda vivo sin abrir ningún socket y sin emitir ningún error**. No es un
+crash, es un cuelgue silencioso. Por eso `dist/client` resultó ser obligatorio: el server resuelve
+los estáticos contra esa ruta embebida, y sin ella no levanta.
+
+Un `cp` más en `amplify.yml` no lo arregla: la ruta absoluta queda incorporada dentro del bundle y no
+hay forma de redirigirla desde el despliegue. Hay que evitar que se incorpore.
+
+### Opciones para destrabarlo
+
+1. **Parchear el manifest en post-build** para reescribir las rutas a relativas. Frágil: depende de
+   la forma exacta del manifest generado por Astro, que cambia entre versiones.
+2. **Usar el adapter comunitario `astro-aws-amplify`**, que existe justamente para emitir el layout
+   correcto. Requiere Astro 6+; el proyecto está en 5.17.1.
+3. **Subir Astro a 6** y usar el adapter actual. Migración de major en un proyecto que además está
+   a un commit de abrir PR.
+4. **Cambiar de estrategia de deploy**: contenedor Lambda o Fargate sirviendo el build completo,
+   aceptando el costo operativo que ya se comparó.
+
+Ninguna es trivial y todas implican decisiones de producto/riesgo. Queda documentado para que la
+elección sea informada.
+
+### Descartado: reverse-proxy rewrite de Amplify
+
+Se investigó el rewrite inverso de Amplify Hosting y **no sirve para este caso**: es una acción de
+CloudFront en el edge, sin paso de ejecución, así que no puede calcular el HMAC de SigV4. Obliga a
+`AuthType=NONE` y deja el endpoint invocable por cualquiera. Además traga los status no-2xx cuando
+hay una regla 404 catch-all, lo cual es descalificante para un chat donde 429, 500 y 401 deben
+llegar distintos al cliente.
+
+## Hosting: comparación de alternativas (contexto)
+
+**Amplify Hosting sí soporta SSR para Astro**, pero no con `@astrojs/node`: requiere el adapter
+comunitario `astro-aws-amplify` (AWS no mantiene uno propio). La única versión del adapter
+compatible con Astro 5.17.1 es `0.2.2`, de 2025-09-17; las actuales exigen Astro 6+.
+
+| Opción | Carga operativa | Encaja |
+| --- | --- | --- |
+| Imagen de contenedor Lambda + Function URL | Baja: ECR, Lambda, Function URL, execution role | Sí, credenciales temporales por rol |
+| Amplify compute con entry Node pelado | Baja | Viable, pero bloqueada por el blocker de arriba |
+| Amplify SSR con adapter | La más baja | Sólo si se acepta el adapter fijado |
+| Fargate + ALB | **Alta**: VPC, subnets, SG, ALB, cluster, task role, ECR | Descartada: con `AWS_IAM` exige VPC endpoint o NAT Gateway, y NAT se factura por hora aunque no se use |
+
+Sobre credenciales: **no hacen falta claves de larga duración**. Amplify provee un IAM SSR Compute
+role y ECS provee task role. AWS recomienda explícitamente no guardar credenciales en variables de
+entorno.
+
+**No verificado:** si firmar SigV4 contra la Function URL propia funciona con las credenciales del
+compute role de Amplify (plausible, no documentado). Y no se encontró documentación de "Amplify
+container hosting" como capacidad de producción; no debe asumirse.
 
 **Amplify Hosting sí soporta SSR para Astro**, pero no con `@astrojs/node`: requiere el adapter
 comunitario `astro-aws-amplify` (AWS no mantiene uno propio). El bloqueo real es de versiones: el
