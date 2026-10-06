@@ -57,6 +57,32 @@ cpSync(join(root, "node_modules"), join(computeDir, "node_modules"), {
   recursive: true,
 });
 
+// ── Variables de runtime que el compute necesita ────────────────────────────────────────────────
+// Amplify expone las variables de la consola SOLO durante el build: el proceso del compute SSR no
+// las recibe (https://docs.aws.amazon.com/amplify/latest/userguide/ssr-environment-variables.html).
+// Se hornean en el entrypoint, antes de importar a Astro, porque `chat.ts` las lee de `process.env`
+// en un `const` de nivel módulo y el `await import()` de abajo corre DESPUÉS de este bloque.
+//
+// Por qué no basta con `.env.production`: si la variable también está en `process.env` durante el
+// build (que es justo lo que hace Amplify), Vite reescribe `import.meta.env.X` a `process.env.X`
+// —un lookup en runtime— en vez de incrustar el literal, y en runtime ya no existe. Horneado acá
+// funciona en ambos casos, y además no depende de la semántica de inlining de Vite.
+const RUNTIME_ENV = ["LAMBDA_FUNCTION_URL", "LAMBDA_TIMEOUT_MS"];
+const REQUIRED_ENV = ["LAMBDA_FUNCTION_URL"];
+
+const missingEnv = REQUIRED_ENV.filter((key) => !process.env[key]?.trim());
+if (missingEnv.length > 0) {
+  throw new Error(
+    `Faltan variables de entorno en Amplify (App settings > Environment variables): ` +
+      `${missingEnv.join(", ")}. Se falla acá a propósito: si faltan, el sitio compila bien y ` +
+      `recién en producción devuelve un 503.`
+  );
+}
+
+const bakedEnv = RUNTIME_ENV.filter((key) => process.env[key]?.trim()).map(
+  (key) => `process.env.${key} ||= ${JSON.stringify(process.env[key].trim())};`
+);
+
 // Entry en la raíz del subdirectorio de compute.
 writeFileSync(
   join(computeDir, "server.mjs"),
@@ -67,10 +93,15 @@ writeFileSync(
     "// el entrypoint real lee PORT/HOST al cargarse.",
     "process.env.PORT ||= '3000';",
     "process.env.HOST ||= '0.0.0.0';",
+    "// Variables de runtime horneadas en build (Amplify no las inyecta en el compute).",
+    "// Deben ir ANTES del import dinámico: `chat.ts` las lee al cargar su const de nivel módulo.",
+    ...bakedEnv,
     "await import('./dist/server/entry.mjs');",
     "",
   ].join("\n"),
 );
+
+console.log(`[amplify] env horneada   ${RUNTIME_ENV.filter((k) => process.env[k]?.trim()).join(", ")}`);
 
 // https://docs.aws.amazon.com/amplify/latest/userguide/ssr-deployment-specification.html
 const manifest = {
