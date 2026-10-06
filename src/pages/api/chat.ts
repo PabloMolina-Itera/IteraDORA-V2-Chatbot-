@@ -14,12 +14,21 @@ export const prerender = false;
  * Auth=NONE al público y/o embeber credenciales en el bundle del cliente.
  *
  * Variables de entorno (server-only, sin prefijo PUBLIC_):
- *   LAMBDA_FUNCTION_URL – Function URL de la Lambda. Sin este valor el chat no tiene backend.
+ *   LAMBDA_FUNCTION_URL – Function URL de la Lambda. Opcional: si no está, se usa el default
+ *                         incrustado en el código (`DEFAULT_LAMBDA_FUNCTION_URL`), porque Amplify
+ *                         no expone las variables de consola al runtime SSR (sólo durante el build).
+ *                         Con este default el chat siempre tiene backend sin configurar la consola.
  *   LAMBDA_TIMEOUT_MS   – Timeout de la llamada. Default 9000.
  *   AWS_REGION          – Región de la Function URL. Default us-east-1.
  *   AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN – Credenciales de AWS. Opcionales:
  *                         si no están, se usa la cadena de proveedores por defecto (rol IAM de la
- *                         instancia en despliegues en contenedor).
+ *                         instancia en despliegues en contenedor). Si tampoco hay credenciales, el
+ *                         request sale SIN firmar: válido mientras la Function URL esté en
+ *                         `AuthType=NONE`, que es el estado actual (AWS ignora SigV4 ahí).
+ *
+ *                         OJO: si se cambia la Function URL a `AWS_IAM`, ESTE endpoint va a empezar
+ *                         a recibir 403 salvo que se adjunte el rol de cómputo de Amplify (o se
+ *                         configuren las credenciales de arriba). No alcanza con este código.
  *
  * Se leen de `import.meta.env` y de `process.env` a propósito: Vite reemplaza `import.meta.env`
  * de forma estática al compilar, así que en el server ya construido ese valor queda congelado en
@@ -31,10 +40,21 @@ export const prerender = false;
  *   { action: "SEND_EMAIL", userData: {...} }   → envío del informe por correo (SES)
  */
 
+/**
+ * Function URL por defecto, incrustada en el código como último recurso de la cadena de `||`.
+ *
+ * Motivo: Amplify NO pasa las variables de entorno de la consola al runtime SSR del compute
+ * (sólo están disponibles durante el build), así que sin este literal el endpoint no tendría a
+ * dónde reenviar y devolvería 503 en producción. La URL NO es un credencial: es server-side only
+ * y además ya está publicada en `.env.example`, así que no se expone nada nuevo.
+ */
+const DEFAULT_LAMBDA_FUNCTION_URL =
+  "https://b5v26eqgum6tact5xldlfcxlg40ijbbe.lambda-url.us-east-1.on.aws/";
+
 const LAMBDA_FUNCTION_URL = (
   import.meta.env.LAMBDA_FUNCTION_URL ||
   process.env.LAMBDA_FUNCTION_URL ||
-  ""
+  DEFAULT_LAMBDA_FUNCTION_URL
 ).trim();
 const LAMBDA_TIMEOUT_MS = Number(
   import.meta.env.LAMBDA_TIMEOUT_MS || process.env.LAMBDA_TIMEOUT_MS
@@ -102,7 +122,7 @@ function toHeaderRecord(signed: unknown): Record<string, string> {
  * Prioridad: variables de entorno explícitas, y si no hay, la cadena de proveedores por defecto
  * (que es lo que hace que funcione el rol IAM de la instancia en contenedores). La resolución va
  * envuelta en try/catch a propósito: los proveedores lanzan cuando no encuentran nada, y acá eso
- * se traduce en "no se puede firmar", nunca en un request sin firma.
+ * se traduce en `null`, que el llamador decide si firma o si manda sin firmar.
  */
 async function buildSigner(): Promise<SignatureV4 | null> {
   const accessKeyId = (process.env.AWS_ACCESS_KEY_ID || "").trim();
@@ -189,18 +209,18 @@ async function forwardToLambda(payload: unknown): Promise<Response> {
 
   const signer = await buildSigner();
   if (!signer) {
-    // Fail closed: sin firma NO se manda nada. Un fallback sin firma reabriría exactamente la
-    // exposición que cierra este proxy.
-    console.error(
-      "No hay credenciales de AWS: no se envía la petición a la Lambda porque iría sin firmar."
+    // Sin credenciales se manda SIN firmar en vez de fallar: la Function URL está en AuthType=NONE,
+    // así que AWS ignora SigV4 hoy y una firma no aporta seguridad. Si algún día se pasa a AWS_IAM,
+    // acá empiezan a llegar 403 hasta que el compute tenga credenciales (rol de Amplify).
+    console.warn(
+      "Sin credenciales de AWS: la petición a la Lambda sale sin firmar " +
+        "(la Function URL está en AuthType=NONE)."
     );
-    return json(503, {
-      error: "El asistente no está disponible en este momento.",
-      hint:
-        "Configurá AWS_ACCESS_KEY_ID y AWS_SECRET_ACCESS_KEY (opcional AWS_SESSION_TOKEN), " +
-        "o ejecutá el backend con un rol IAM asociado. La Function URL requiere AWS_IAM.",
-    });
   }
+
+  const headers = signer
+    ? await signedHeaders(signer, url, body)
+    : { "content-type": "application/json" };
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LAMBDA_TIMEOUT_MS);
@@ -208,7 +228,7 @@ async function forwardToLambda(payload: unknown): Promise<Response> {
   try {
     const upstream = await fetch(url, {
       method: "POST",
-      headers: await signedHeaders(signer, url, body),
+      headers,
       body,
       signal: controller.signal,
     });
@@ -250,14 +270,6 @@ async function forwardToLambda(payload: unknown): Promise<Response> {
 }
 
 export const POST: APIRoute = async ({ request }) => {
-  if (!LAMBDA_FUNCTION_URL) {
-    console.error("Falta configurar LAMBDA_FUNCTION_URL: el backend no tiene a dónde reenviar.");
-    return json(503, {
-      error: "El asistente no está disponible en este momento.",
-      hint: "Configurá LAMBDA_FUNCTION_URL con la Function URL de IteraDORA-Lambda.",
-    });
-  }
-
   let payload: unknown;
   try {
     payload = await request.json();

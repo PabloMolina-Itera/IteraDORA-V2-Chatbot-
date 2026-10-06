@@ -29,7 +29,8 @@ frontend:
         - npm run build
         # Arma .amplify-hosting/: static/ + compute/default/ + deploy-manifest.json. Su
         # `server.mjs` fija PORT/HOST y hornea LAMBDA_FUNCTION_URL antes de importar a Astro.
-        # Si falta una variable obligatoria, el build falla acá y no llega a producción como 503.
+        # Si falta una variable, sólo emite un aviso y el build sigue: chat.ts usa su default
+        # incrustado en el código, así que no llega a producción como 503.
         - node scripts/build-amplify.mjs
   artifacts:
     baseDirectory: .amplify-hosting

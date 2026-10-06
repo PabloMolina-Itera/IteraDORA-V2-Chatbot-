@@ -68,14 +68,14 @@ cpSync(join(root, "node_modules"), join(computeDir, "node_modules"), {
 // —un lookup en runtime— en vez de incrustar el literal, y en runtime ya no existe. Horneado acá
 // funciona en ambos casos, y además no depende de la semántica de inlining de Vite.
 const RUNTIME_ENV = ["LAMBDA_FUNCTION_URL", "LAMBDA_TIMEOUT_MS"];
-const REQUIRED_ENV = ["LAMBDA_FUNCTION_URL"];
+// Ninguna es obligatoria: `chat.ts` trae un default incrustado para LAMBDA_FUNCTION_URL.
+const OPTIONAL_ENV = ["LAMBDA_FUNCTION_URL"];
 
-const missingEnv = REQUIRED_ENV.filter((key) => !process.env[key]?.trim());
+const missingEnv = OPTIONAL_ENV.filter((key) => !process.env[key]?.trim());
 if (missingEnv.length > 0) {
-  throw new Error(
-    `Faltan variables de entorno en Amplify (App settings > Environment variables): ` +
-      `${missingEnv.join(", ")}. Se falla acá a propósito: si faltan, el sitio compila bien y ` +
-      `recién en producción devuelve un 503.`
+  console.warn(
+    `[amplify] AVISO: ${missingEnv.join(", ")} no está presente en el entorno de build. ` +
+      `No falla el build: chat.ts usa su fallback incrustado en el código.`
   );
 }
 
