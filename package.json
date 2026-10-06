@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "build:amplify": "npm run build && node -e \"const f=require('fs');f.mkdirSync('.amplify-hosting/compute/default',{recursive:true});f.cpSync('dist','.amplify-hosting/compute/default/dist',{recursive:true});f.cpSync('node_modules','.amplify-hosting/compute/default/node_modules',{recursive:true})\"",
     "start": "node ./dist/server/entry.mjs",
     "preview": "astro preview",
     "astro": "astro"

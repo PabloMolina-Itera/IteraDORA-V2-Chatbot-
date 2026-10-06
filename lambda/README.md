@@ -59,9 +59,14 @@ incluir `node_modules`**. Con sólo `index.js` y `package.json` la Lambda arranc
 invocar.
 
 ```powershell
-# Desde la carpeta lambda/
-Compress-Archive -Path index.js,node_modules -DestinationPath iteradora-lambda.zip -Force
+# Desde la raíz del repositorio. Genera iteradora-lambda.zip con index.js + node_modules.
+powershell -NoProfile -ExecutionPolicy Bypass -File lambda\build-lambda-zip.ps1
 ```
+
+> **No usar `Compress-Archive` para este bundle.** En Windows PowerShell 5.1 escribe las rutas
+> internas del ZIP con `\` en lugar de `/`, y `Compress-Archive` ejecutado sobre el directorio
+> equivocado empaqueta el propio `iteradora-lambda.zip` dentro de sí mismo (~2.6 MB de basura).
+> `build-lambda-zip.ps1` escribe el archivo fuera del directorio fuente y excluye cualquier `.zip`.
 
 1. Ir a **AWS Console → Lambda → Create function**
 2. **Runtime:** Node.js 18.x o superior

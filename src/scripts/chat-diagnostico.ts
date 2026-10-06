@@ -464,7 +464,7 @@ function initChatDiagnostico() {
     window.setTimeout(() => {
       boton.textContent = boton.dataset.textoOriginal || "Enviar resultados";
       boton.disabled = false;
-      boton.title = exito ? "" : "No se pudo enviar el correo. Podés volver a intentarlo.";
+      boton.title = exito ? "" : "No se pudo enviar el correo. Puedes volver a intentarlo.";
     }, 3000);
   }
 

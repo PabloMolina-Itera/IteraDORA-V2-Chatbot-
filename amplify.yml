@@ -10,6 +10,15 @@ version: 1
 #     "PM=Xiomara Valencia" \
 #     "Aprobador=Sebastian Sanchez"
 
+# El backend `/api/chat` es una SSR route (`export const prerender = false` en
+# src/pages/api/chat.ts). Con `dist/client` como único artefacto esa ruta no existe en
+# producción y el chatbot responde 404, aunque funcione en local. Por eso se despliega el
+# output de `astro build` completo, no sólo la parte estática.
+#
+# `node_modules` es obligatorio en el artefacto: el bundle de Astro deja imports bare
+# (`piccolore`, `devalue`, `cookie`, `mrmime`, `@aws-sdk/signature-v4`, ...) y Node no los
+# resuelve en runtime sin las dependencias instaladas. Verificado: copiar sólo `dist` a otra
+# ruta y arrancar `entry.mjs` falla con ERR_MODULE_NOT_FOUND.
 frontend:
   phases:
     preBuild:
@@ -17,9 +26,16 @@ frontend:
         - npm ci
     build:
       commands:
+        # `astro build` genera dist/client (estático) y dist/server (SSR). El bundle SSR se
+        # publica aparte abajo; acá se arma el directorio de compute.
         - npm run build
+        # El adapter @astrojs/node en modo standalone no empaqueta las dependencias bare del
+        # bundle, así que el server no arranca sin ellas (ERR_MODULE_NOT_FOUND en runtime).
+        - mkdir -p .amplify-hosting/compute/default
+        - cp -r dist .amplify-hosting/compute/default/dist
+        - cp -r node_modules .amplify-hosting/compute/default/node_modules
   artifacts:
-    baseDirectory: dist/client
+    baseDirectory: .amplify-hosting/compute/default
     files:
       - '**/*'
   cache:

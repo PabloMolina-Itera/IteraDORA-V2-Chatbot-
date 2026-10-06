@@ -25,3 +25,6 @@ pnpm-debug.log*
 
 # temp build
 _temp_lambda/
+
+# Amplify compute staging (se regenera con `npm run build:amplify`)
+.amplify-hosting/
